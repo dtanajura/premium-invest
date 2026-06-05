@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium Invest - Dashboard Patrimonial</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body { background-color: #0b0f19; color: #f3f4f6; font-family: system-ui, -apple-system, sans-serif; }
+        .card-premium { background: linear-gradient(145deg, #111827, #1f2937); border: 1px solid #374151; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.5); }
+        .text-gradient { background: linear-gradient(to right, #3b82f6, #10b981); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .sidebar-item-active { background-color: #1f2937; border-left: 4px solid #3b82f6; color: #3b82f6; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #111827; }
+        ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col md:flex-row">
+
+    <!-- TELA DE LOGIN -->
+    <div id="tela-login" class="fixed inset-0 bg-[#0b0f19] z-[100] flex items-center justify-center p-4">
+        <div class="card-premium w-full max-w-sm rounded-2xl overflow-hidden">
+            <div class="p-8 space-y-6">
+                <div class="text-center">
+                    <i class="fa-solid fa-chart-line text-4xl text-blue-500 mb-3 block"></i>
+                    <h1 class="text-2xl font-black text-gradient">PREMIUM INVEST</h1>
+                    <p class="text-xs text-gray-500 mt-1">Controle Patrimonial Privado</p>
+                </div>
+                <div id="login-erro" class="hidden text-xs text-red-400 bg-red-950/30 border border-red-900/40 p-2.5 rounded-lg"></div>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">E-mail</label>
+                        <input type="email" id="login-email" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-blue-500" placeholder="seu@email.com">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Senha</label>
+                        <input type="password" id="login-senha" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-white text-sm focus:outline-none focus:border-blue-500" placeholder="••••••••"
+                               onkeydown="if(event.key==='Enter') fazerLogin()">
+                    </div>
+                </div>
+                <button onclick="fazerLogin()" id="btn-login" class="w-full bg-blue-600 hover:bg-blue-700 font-bold py-2.5 rounded-lg transition text-sm">
+                    <i class="fa-solid fa-right-to-bracket mr-2"></i>Entrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOADING OVERLAY -->
+    <div id="loading-overlay" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+        <div class="flex flex-col items-center gap-3">
+            <i class="fa-solid fa-spinner fa-spin text-3xl text-blue-400"></i>
+            <span class="text-sm text-gray-300">Aguarde...</span>
+        </div>
+    </div>
+
+    <!-- MENU LATERAL -->
+    <aside class="w-full md:w-64 bg-[#0d1321] border-b md:border-b-0 md:border-r border-gray-800 flex flex-col justify-between p-4 shrink-0">
+        <div>
+            <div class="flex items-center gap-3 px-2 py-4 mb-6 border-b border-gray-800">
+                <i class="fa-solid fa-chart-line text-2xl text-blue-500"></i>
+                <span class="text-xl font-bold tracking-wider text-gradient">PREMIUM INVEST</span>
+            </div>
+            <nav class="space-y-1">
+                <button onclick="switchView('dashboard')" id="btn-nav-dashboard" class="sidebar-item-active w-full flex items-center gap-3 px-4 py-3 text-left rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white transition">
+                    <i class="fa-solid fa-gauge w-5"></i> Dashboard
+                </button>
+                <button onclick="switchView('carteira')" id="btn-nav-carteira" class="w-full flex items-center gap-3 px-4 py-3 text-left rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white transition">
+                    <i class="fa-solid fa-wallet w-5"></i> Minha Carteira
+                </button>
+                <button onclick="switchView('instituicoes')" id="btn-nav-instituicoes" class="w-full flex items-center gap-3 px-4 py-3 text-left rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white transition">
+                    <i class="fa-solid fa-building-columns w-5"></i> Instituições
+                </button>
+                <button onclick="switchView('configuracoes')" id="btn-nav-configuracoes" class="w-full flex items-center gap-3 px-4 py-3 text-left rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white transition">
+                    <i class="fa-solid fa-sliders w-5"></i> Metas & Dados
+                </button>
+            </nav>
+        </div>
+        <div class="mt-6 pt-4 border-t border-gray-800 space-y-2">
+            <p id="usuario-email" class="text-xs text-gray-500 text-center truncate px-2"></p>
+            <button onclick="fazerLogout()" class="w-full flex items-center justify-center gap-2 text-xs text-gray-400 hover:text-red-400 py-2 rounded-lg hover:bg-gray-800 transition">
+                <i class="fa-solid fa-right-from-bracket"></i> Sair
+            </button>
+            <p class="text-xs text-gray-600 text-center">Controle Patrimonial Ativo</p>
+        </div>
+    </aside>
+
+    <!-- CONTEÚDO PRINCIPAL -->
+    <main class="flex-1 p-4 md:p-8 overflow-y-auto max-w-[1600px] mx-auto w-full">
+
+        <!-- HEADER -->
+        <div class="card-premium p-4 rounded-xl mb-6 flex items-center justify-between">
+            <div>
+                <h1 id="view-title" class="text-2xl font-bold">Dashboard Geral</h1>
+                <p class="text-xs text-gray-400">Consolidado dinâmico e histórico de movimentações</p>
+            </div>
+            <button onclick="exportarParaExcel()" class="bg-emerald-700 hover:bg-emerald-600 text-sm font-semibold px-4 py-2 rounded-lg transition flex items-center gap-2">
+                <i class="fa-solid fa-file-excel"></i> Exportar Excel
+            </button>
+        </div>
+
+        <!-- ABA 1: DASHBOARD -->
+        <section id="view-dashboard" class="space-y-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="card-premium p-5 rounded-xl border-l-4 border-blue-500">
+                    <p class="text-xs text-gray-400 font-medium uppercase">Patrimônio Atual</p>
+                    <h3 id="card-patrimonio-total" class="text-3xl font-black mt-1 text-blue-400">R$ 0,00</h3>
+                </div>
+                <div class="card-premium p-5 rounded-xl border-l-4 border-emerald-500">
+                    <p class="text-xs text-gray-400 font-medium uppercase">Total de Aportes Líquidos</p>
+                    <h3 id="card-total-aplicado" class="text-3xl font-black mt-1 text-emerald-400">R$ 0,00</h3>
+                </div>
+                <div class="card-premium p-5 rounded-xl border-l-4 border-orange-500">
+                    <p class="text-xs text-gray-400 font-medium uppercase">Evolução Real (Lucro)</p>
+                    <h3 id="card-ganho-perda" class="text-3xl font-bold mt-1">R$ 0,00</h3>
+                </div>
+                <div class="card-premium p-5 rounded-xl border-l-4 border-purple-500">
+                    <p class="text-xs text-gray-400 font-medium uppercase">Rentabilidade Global</p>
+                    <h3 id="card-rentabilidade" class="text-3xl font-bold mt-1">0,00%</h3>
+                </div>
+            </div>
+
+            <!-- Meta Patrimonial -->
+            <div class="card-premium p-5 rounded-xl">
+                <div class="flex justify-between items-center mb-3">
+                    <h4 class="font-bold text-gray-300"><i class="fa-solid fa-bullseye text-red-500 mr-2"></i>Meta de Acumulação</h4>
+                    <span id="meta-percentual" class="text-sm font-bold bg-gray-800 text-blue-400 px-2 py-0.5 rounded">0%</span>
+                </div>
+                <div class="w-full bg-gray-700 rounded-full h-3 mb-4 overflow-hidden">
+                    <div id="meta-barra-progresso" class="bg-gradient-to-r from-blue-500 to-emerald-500 h-3 rounded-full transition-all" style="width: 0%"></div>
+                </div>
+                <div class="grid grid-cols-3 gap-2 text-center text-xs">
+                    <div class="bg-gray-800/40 p-2 rounded">Alvo: <span id="meta-v-alvo" class="font-bold block text-sm mt-0.5">R$ 0,00</span></div>
+                    <div class="bg-gray-800/40 p-2 rounded">Atual: <span id="meta-v-atual" class="font-bold block text-sm mt-0.5 text-blue-400">R$ 0,00</span></div>
+                    <div class="bg-gray-800/40 p-2 rounded">Faltam: <span id="meta-v-restante" class="font-bold block text-sm mt-0.5">R$ 0,00</span></div>
+                </div>
+            </div>
+
+            <!-- Gráficos -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="card-premium p-6 rounded-xl">
+                    <h5 class="text-sm font-bold mb-4 text-gray-300 uppercase tracking-wider border-b border-gray-800 pb-2"><i class="fa-solid fa-pie-chart text-blue-500 mr-2"></i>Alocação por Categoria de Investimento</h5>
+                    <div class="relative w-full h-72"><canvas id="chartCategoria"></canvas></div>
+                </div>
+                <div class="card-premium p-6 rounded-xl">
+                    <h5 class="text-sm font-bold mb-4 text-gray-300 uppercase tracking-wider border-b border-gray-800 pb-2"><i class="fa-solid fa-building-columns text-emerald-500 mr-2"></i>Concentração de Recursos por Banco</h5>
+                    <div class="relative w-full h-72"><canvas id="chartBanco"></canvas></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ABA 2: CARTEIRA -->
+        <section id="view-carteira" class="hidden space-y-6">
+            <div class="flex items-center justify-between">
+                <h2 class="text-xl font-bold">Gerenciamento de Ativos</h2>
+                <button onclick="openModalCadastro()" class="bg-blue-600 hover:bg-blue-700 text-sm font-semibold px-4 py-2 rounded-lg transition"><i class="fa-solid fa-plus mr-2"></i>Registrar Nova Operação</button>
+            </div>
+            <div class="card-premium rounded-xl overflow-hidden">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead>
+                        <tr class="bg-gray-800/80 text-xs text-gray-400 uppercase border-b border-gray-700">
+                            <th class="p-4">Banco</th>
+                            <th class="p-4">Investimento</th>
+                            <th class="p-4">Categoria</th>
+                            <th class="p-4 text-right">Aportes Líquidos</th>
+                            <th class="p-4 text-right">Valor Atualizado</th>
+                            <th class="p-4 text-right">Resultado</th>
+                            <th class="p-4 text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-investimentos-body" class="divide-y divide-gray-800"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ABA 3: INSTITUIÇÕES -->
+        <section id="view-instituicoes" class="hidden space-y-6">
+            <h2 class="text-xl font-bold">Consolidado por Instituição</h2>
+            <div class="card-premium rounded-xl overflow-hidden">
+                <table class="w-full text-left text-sm">
+                    <thead>
+                        <tr class="bg-gray-800/80 text-xs text-gray-400 border-b border-gray-700">
+                            <th class="p-4">Banco / Corretora</th>
+                            <th class="p-4 text-right">Patrimônio Alocado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-instituicoes-body" class="divide-y divide-gray-800"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ABA 4: CONFIGURAÇÕES -->
+        <section id="view-configuracoes" class="hidden space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="card-premium p-5 rounded-xl space-y-4">
+                    <h3 class="text-lg font-bold border-b border-gray-800 pb-2">Meta Patrimonial</h3>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Definir Valor Alvo (R$)</label>
+                        <input type="number" id="input-meta-patrimonio" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white" placeholder="Ex: 100000">
+                    </div>
+                    <button onclick="salvarMetaGlobal()" class="bg-emerald-600 hover:bg-emerald-700 text-sm font-semibold px-4 py-2 rounded-lg w-full transition">Salvar Configuração</button>
+                </div>
+                <div class="card-premium p-5 rounded-xl space-y-4">
+                    <h3 class="text-lg font-bold border-b border-gray-800 pb-2 text-amber-500">Ações do Sistema</h3>
+                    <p class="text-xs text-gray-400">Gere dados históricos fictícios para testes ou apague todos os registros.</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="carregarDadosDemo()" class="bg-gray-800 hover:bg-gray-700 text-xs py-2.5 rounded-lg border border-gray-700 transition">Injetar Histórico Demo</button>
+                        <button onclick="limparSistema()" class="bg-red-950/40 text-red-400 hover:bg-red-900/40 text-xs py-2.5 rounded-lg border border-red-900 transition">Zerar Tudo</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- MODAL CADASTRO -->
+    <div id="modal-cadastro" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="card-premium w-full max-w-md rounded-2xl overflow-hidden">
+            <div class="bg-gray-800/60 px-6 py-4 border-b border-gray-700 flex justify-between items-center">
+                <h3 class="font-bold">Lançar Nova Movimentação</h3>
+                <button onclick="closeModalCadastro()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="criarOuAportarAtivo(event)" class="p-6 space-y-4 text-sm">
+                <p class="text-xs text-amber-400 bg-amber-950/20 p-2 rounded border border-amber-900/40">Dica: Se o Banco e o Nome forem idênticos a um ativo existente, o sistema somará os valores e registrará no histórico dele automaticamente!</p>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Banco / Corretora</label>
+                    <input type="text" id="cad-banco" required class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white" placeholder="Ex: XP, Inter, Nu">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Nome do Investimento</label>
+                    <input type="text" id="cad-nome" required class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white" placeholder="Ex: Tesouro Selic 2029">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Categoria</label>
+                    <select id="cad-categoria" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white">
+                        <option value="Renda Fixa">Renda Fixa (CDB, LCI, LCA)</option>
+                        <option value="Tesouro Direto">Tesouro Direto</option>
+                        <option value="Ações">Ações</option>
+                        <option value="Fundos Imobiliários">Fundos Imobiliários (FIIs)</option>
+                        <option value="Fundos de Investimento">Fundos de Investimento</option>
+                        <option value="Criptomoedas">Criptomoedas</option>
+                        <option value="Outros">Outros</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Valor do Aporte (R$)</label>
+                        <input type="number" id="cad-val-aplicado" step="0.01" required class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Valor Atualizado Total (R$)</label>
+                        <input type="number" id="cad-val-atual" step="0.01" required class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white" placeholder="Se novo, igual ao aporte">
+                    </div>
+                </div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded-lg font-bold transition">Confirmar Lançamento</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL GERENCIAR -->
+    <div id="modal-gerenciar" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="card-premium w-full max-w-lg rounded-2xl overflow-hidden">
+            <div class="bg-gray-800/60 px-6 py-4 border-b border-gray-700 flex justify-between items-center">
+                <div>
+                    <h3 class="font-bold text-base" id="edit-titulo-modal">Gerenciar Ativo</h3>
+                    <p class="text-xs text-gray-400" id="edit-subtitulo-modal"></p>
+                </div>
+                <button onclick="closeModalGerenciar()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-6 space-y-6 text-sm max-h-[80vh] overflow-y-auto">
+                <div class="space-y-3 bg-gray-900/50 p-4 rounded-xl border border-gray-800">
+                    <h4 class="text-xs font-bold uppercase text-blue-400">Modificar Dados Atuais</h4>
+                    <input type="hidden" id="edit-id">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Nome do Ativo</label>
+                            <input type="text" id="edit-nome" class="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Preço/Valor de Mercado Atual (R$)</label>
+                            <input type="number" id="edit-valor-atual" step="0.01" class="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-xs">
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-2 pt-1">
+                        <button onclick="excluirAtivoCompleto()" class="bg-red-950/40 text-red-400 border border-red-900 px-3 py-1.5 rounded-lg text-xs hover:bg-red-900/40 transition">Remover Ativo</button>
+                        <button onclick="salvarEdicaoBasica()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-1.5 rounded-lg text-xs transition">Atualizar Ativo</button>
+                    </div>
+                </div>
+                <div class="space-y-3 bg-gray-900/50 p-4 rounded-xl border border-gray-800">
+                    <h4 class="text-xs font-bold uppercase text-emerald-400">Inserir Movimentação Direta</h4>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Tipo</label>
+                            <select id="mov-tipo" class="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-xs">
+                                <option value="Aporte">Aporte (+)</option>
+                                <option value="Retirada">Retirada (-)</option>
+                            </select>
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-xs text-gray-400 mb-1">Valor da Operação (R$)</label>
+                            <input type="number" id="mov-valor" step="0.01" class="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-xs" placeholder="0,00">
+                        </div>
+                    </div>
+                    <button onclick="adicionarMovimentacaoDireta()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-1.5 rounded-lg text-xs transition">Lançar no Histórico</button>
+                </div>
+                <div class="space-y-2">
+                    <h4 class="text-xs font-bold uppercase text-gray-400 tracking-wider">Histórico de Fluxo de Caixa</h4>
+                    <div class="border border-gray-800 rounded-lg overflow-hidden bg-gray-950">
+                        <table class="w-full text-left text-xs">
+                            <thead>
+                                <tr class="bg-gray-900 text-gray-400 border-b border-gray-800">
+                                    <th class="p-2.5">Data/Registro</th>
+                                    <th class="p-2.5">Operação</th>
+                                    <th class="p-2.5 text-right">Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-historico-movs" class="divide-y divide-gray-900"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ── SUPABASE ──────────────────────────────────────────────────
+        const { createClient } = supabase
+        const db = createClient(
+            'https://cqazttuexglyurzmmxhm.supabase.co',
+            'sb_publishable_M8yJ4k0fMd9ayS8dGo28MQ_Ryb64p5i'
+        )
+
+        let AppData = { metaPatrimonio: 0, investimentos: [] }
+        let charts = { categoria: null, banco: null }
+        let currentUser = null
+
+        // ── LOADING ───────────────────────────────────────────────────
+        function setLoading(on) {
+            document.getElementById('loading-overlay').classList.toggle('hidden', !on)
+        }
+
+        // ── AUTH ──────────────────────────────────────────────────────
+        async function inicializar() {
+            const { data: { session } } = await db.auth.getSession()
+            if (session) {
+                currentUser = session.user
+                mostrarApp()
+                await carregarDados()
+            } else {
+                mostrarLogin()
+            }
+
+            db.auth.onAuthStateChange(async (event, session) => {
+                if (session) {
+                    currentUser = session.user
+                    mostrarApp()
+                    await carregarDados()
+                } else {
+                    currentUser = null
+                    mostrarLogin()
+                }
+            })
+        }
+
+        function mostrarLogin() {
+            document.getElementById('tela-login').classList.remove('hidden')
+        }
+
+        function mostrarApp() {
+            document.getElementById('tela-login').classList.add('hidden')
+            document.getElementById('usuario-email').textContent = currentUser?.email || ''
+        }
+
+        async function fazerLogin() {
+            const email = document.getElementById('login-email').value.trim()
+            const senha = document.getElementById('login-senha').value
+            const erroEl = document.getElementById('login-erro')
+            const btn = document.getElementById('btn-login')
+
+            erroEl.classList.add('hidden')
+            btn.disabled = true
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Entrando...'
+
+            const { error } = await db.auth.signInWithPassword({ email, password: senha })
+
+            btn.disabled = false
+            btn.innerHTML = '<i class="fa-solid fa-right-to-bracket mr-2"></i>Entrar'
+
+            if (error) {
+                erroEl.textContent = 'E-mail ou senha incorretos.'
+                erroEl.classList.remove('hidden')
+            }
+        }
+
+        async function fazerLogout() {
+            await db.auth.signOut()
+            AppData = { metaPatrimonio: 0, investimentos: [] }
+            renderApp()
+        }
+
+        // ── DATA ──────────────────────────────────────────────────────
+        async function carregarDados() {
+            setLoading(true)
+            try {
+                const [{ data: cfgData }, { data: invData }, { data: movData }] = await Promise.all([
+                    db.from('config').select('*'),
+                    db.from('investimentos').select('*').order('id'),
+                    db.from('movimentacoes').select('*').order('id')
+                ])
+
+                const metaRow = (cfgData || []).find(c => c.chave === 'meta_patrimonio')
+                AppData.metaPatrimonio = metaRow ? parseFloat(metaRow.valor) : 0
+
+                AppData.investimentos = (invData || []).map(inv => ({
+                    id: inv.id,
+                    banco: inv.banco,
+                    nome: inv.nome,
+                    categoria: inv.categoria,
+                    valorAtual: parseFloat(inv.valor_atual),
+                    historico: (movData || [])
+                        .filter(m => m.investimento_id === inv.id)
+                        .map(m => ({ data: m.data, tipo: m.tipo, valor: parseFloat(m.valor) }))
+                }))
+
+                document.getElementById('input-meta-patrimonio').value = AppData.metaPatrimonio || ''
+                renderApp()
+            } catch (err) {
+                alert('Erro ao carregar dados: ' + err.message)
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        // ── VIEWS ─────────────────────────────────────────────────────
+        function switchView(viewKey) {
+            ['dashboard', 'carteira', 'instituicoes', 'configuracoes'].forEach(v => {
+                document.getElementById(`view-${v}`).classList.add('hidden')
+                document.getElementById(`btn-nav-${v}`).classList.remove('sidebar-item-active')
+            })
+            document.getElementById(`view-${viewKey}`).classList.remove('hidden')
+            document.getElementById(`btn-nav-${viewKey}`).classList.add('sidebar-item-active')
+            const titles = { dashboard: 'Dashboard Geral', carteira: 'Minha Carteira', instituicoes: 'Instituições', configuracoes: 'Metas & Dados' }
+            document.getElementById('view-title').innerText = titles[viewKey]
+        }
+
+        function formatBRL(v) {
+            return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+        }
+
+        // ── RENDER ────────────────────────────────────────────────────
+        function renderApp() {
+            let totalAtual = 0, totalAplicadoLiquido = 0
+            let catMap = {}, bancoMap = {}
+
+            AppData.investimentos.forEach(inv => {
+                let soma = inv.historico.reduce((acc, m) => m.tipo === 'Aporte' ? acc + m.valor : acc - m.valor, 0)
+                totalAtual += inv.valorAtual
+                totalAplicadoLiquido += soma
+                catMap[inv.categoria] = (catMap[inv.categoria] || 0) + inv.valorAtual
+                bancoMap[inv.banco] = (bancoMap[inv.banco] || 0) + inv.valorAtual
+            })
+
+            let ganho = totalAtual - totalAplicadoLiquido
+            let rent = totalAplicadoLiquido > 0 ? (ganho / totalAplicadoLiquido) * 100 : 0
+
+            document.getElementById('card-patrimonio-total').innerText = formatBRL(totalAtual)
+            document.getElementById('card-total-aplicado').innerText = formatBRL(totalAplicadoLiquido)
+            document.getElementById('card-ganho-perda').innerText = formatBRL(ganho)
+            document.getElementById('card-rentabilidade').innerText = `${rent >= 0 ? '+' : ''}${rent.toFixed(2)}%`
+
+            let meta = AppData.metaPatrimonio || 0
+            let pct = meta > 0 ? (totalAtual / meta) * 100 : 0
+            document.getElementById('meta-percentual').innerText = `${pct.toFixed(1)}%`
+            document.getElementById('meta-barra-progresso').style.width = `${Math.min(pct, 100)}%`
+            document.getElementById('meta-v-alvo').innerText = formatBRL(meta)
+            document.getElementById('meta-v-atual').innerText = formatBRL(totalAtual)
+            document.getElementById('meta-v-restante').innerText = formatBRL(Math.max(0, meta - totalAtual))
+
+            renderTabelas()
+            renderInstituicoes(bancoMap)
+            renderGraficos(catMap, bancoMap)
+        }
+
+        function renderTabelas() {
+            const tbody = document.getElementById('table-investimentos-body')
+            tbody.innerHTML = AppData.investimentos.length === 0
+                ? '<tr><td colspan="7" class="p-4 text-center text-gray-500 italic">Nenhum ativo registrado.</td></tr>' : ''
+
+            AppData.investimentos.forEach(inv => {
+                let soma = inv.historico.reduce((acc, m) => m.tipo === 'Aporte' ? acc + m.valor : acc - m.valor, 0)
+                let r = soma > 0 ? ((inv.valorAtual - soma) / soma) * 100 : 0
+                tbody.innerHTML += `<tr>
+                    <td class="p-4 font-semibold">${inv.banco}</td>
+                    <td class="p-4 text-blue-400 font-medium">${inv.nome}</td>
+                    <td class="p-4"><span class="bg-gray-800 text-gray-300 px-2 py-0.5 rounded text-xs">${inv.categoria}</span></td>
+                    <td class="p-4 text-right">${formatBRL(soma)}</td>
+                    <td class="p-4 text-right text-emerald-400 font-bold">${formatBRL(inv.valorAtual)}</td>
+                    <td class="p-4 text-right font-medium ${inv.valorAtual >= soma ? 'text-emerald-500' : 'text-red-400'}">${r >= 0 ? '+' : ''}${r.toFixed(2)}%</td>
+                    <td class="p-4 text-center">
+                        <button onclick="openModalGerenciar(${inv.id})" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-xs text-gray-300 px-2.5 py-1 rounded transition"><i class="fa-solid fa-gear mr-1"></i>Gerenciar</button>
+                    </td>
+                </tr>`
+            })
+        }
+
+        function renderInstituicoes(bancoMap) {
+            const tbody = document.getElementById('table-instituicoes-body')
+            tbody.innerHTML = Object.keys(bancoMap).length === 0
+                ? '<tr><td colspan="2" class="p-4 text-center text-gray-500 italic">Sem dados alocados.</td></tr>' : ''
+            Object.entries(bancoMap).forEach(([b, v]) => {
+                tbody.innerHTML += `<tr><td class="p-4 font-bold text-gray-300">${b}</td><td class="p-4 text-right text-blue-400 font-mono font-bold text-base">${formatBRL(v)}</td></tr>`
+            })
+        }
+
+        function renderGraficos(catMap, bancoMap) {
+            if (charts.categoria) charts.categoria.destroy()
+            if (charts.banco) charts.banco.destroy()
+            const temDados = AppData.investimentos.length > 0
+            const cores = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#ec4899','#ef4444','#06b6d4','#6b7280']
+            charts.categoria = new Chart(document.getElementById('chartCategoria').getContext('2d'), {
+                type: 'doughnut',
+                data: { labels: temDados ? Object.keys(catMap) : ['Sem dados'], datasets: [{ data: temDados ? Object.values(catMap) : [1], backgroundColor: temDados ? cores : ['#374151'], borderWidth: 1, borderColor: '#1f2937' }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: temDados, position: 'right', labels: { color: '#9ca3af', boxWidth: 12, font: { size: 11 } } } } }
+            })
+            charts.banco = new Chart(document.getElementById('chartBanco').getContext('2d'), {
+                type: 'pie',
+                data: { labels: temDados ? Object.keys(bancoMap) : ['Sem dados'], datasets: [{ data: temDados ? Object.values(bancoMap) : [1], backgroundColor: temDados ? cores.slice().reverse() : ['#374151'], borderWidth: 1, borderColor: '#1f2937' }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: temDados, position: 'right', labels: { color: '#9ca3af', boxWidth: 12, font: { size: 11 } } } } }
+            })
+        }
+
+        // ── MODAIS ────────────────────────────────────────────────────
+        function openModalCadastro() { document.getElementById('modal-cadastro').classList.remove('hidden') }
+        function closeModalCadastro() { document.getElementById('modal-cadastro').classList.add('hidden') }
+
+        async function criarOuAportarAtivo(e) {
+            e.preventDefault()
+            setLoading(true)
+            try {
+                const banco = document.getElementById('cad-banco').value.trim()
+                const nome = document.getElementById('cad-nome').value.trim()
+                const categoria = document.getElementById('cad-categoria').value
+                const valAplicado = parseFloat(document.getElementById('cad-val-aplicado').value) || 0
+                const valAtual = parseFloat(document.getElementById('cad-val-atual').value) || valAplicado
+
+                const existente = AppData.investimentos.find(inv =>
+                    inv.banco.toLowerCase() === banco.toLowerCase() &&
+                    inv.nome.toLowerCase() === nome.toLowerCase())
+
+                if (existente) {
+                    await db.from('movimentacoes').insert({ investimento_id: existente.id, data: new Date().toLocaleDateString('pt-BR'), tipo: 'Aporte', valor: valAplicado })
+                    await db.from('investimentos').update({ valor_atual: valAtual }).eq('id', existente.id)
+                } else {
+                    const newId = Date.now()
+                    await db.from('investimentos').insert({ id: newId, user_id: currentUser.id, banco, nome, categoria, valor_atual: valAtual })
+                    await db.from('movimentacoes').insert({ investimento_id: newId, data: new Date().toLocaleDateString('pt-BR'), tipo: 'Aporte', valor: valAplicado })
+                }
+
+                closeModalCadastro()
+                e.target.reset()
+                await carregarDados()
+            } catch (err) {
+                alert('Erro ao salvar: ' + err.message)
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        function openModalGerenciar(id) {
+            const inv = AppData.investimentos.find(i => i.id === id)
+            if (!inv) return
+            document.getElementById('edit-id').value = inv.id
+            document.getElementById('edit-nome').value = inv.nome
+            document.getElementById('edit-valor-atual').value = inv.valorAtual
+            document.getElementById('edit-titulo-modal').innerText = inv.nome
+            document.getElementById('edit-subtitulo-modal').innerText = `${inv.categoria} • ${inv.banco}`
+            const tbody = document.getElementById('table-historico-movs')
+            tbody.innerHTML = ''
+            inv.historico.forEach(mov => {
+                tbody.innerHTML += `<tr>
+                    <td class="p-2.5 text-gray-400">${mov.data}</td>
+                    <td class="p-2.5"><span class="${mov.tipo === 'Aporte' ? 'text-emerald-400' : 'text-red-400'} font-medium">${mov.tipo}</span></td>
+                    <td class="p-2.5 text-right font-mono">${formatBRL(mov.valor)}</td>
+                </tr>`
+            })
+            document.getElementById('modal-gerenciar').classList.remove('hidden')
+        }
+
+        function closeModalGerenciar() {
+            document.getElementById('modal-gerenciar').classList.add('hidden')
+            document.getElementById('mov-valor').value = ''
+        }
+
+        async function salvarEdicaoBasica() {
+            setLoading(true)
+            try {
+                const id = parseInt(document.getElementById('edit-id').value)
+                const nome = document.getElementById('edit-nome').value.trim()
+                const valorAtual = parseFloat(document.getElementById('edit-valor-atual').value) || 0
+                await db.from('investimentos').update({ nome, valor_atual: valorAtual }).eq('id', id)
+                closeModalGerenciar()
+                await carregarDados()
+            } catch (err) {
+                alert('Erro ao atualizar: ' + err.message)
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        async function adicionarMovimentacaoDireta() {
+            const id = parseInt(document.getElementById('edit-id').value)
+            const valor = parseFloat(document.getElementById('mov-valor').value) || 0
+            const tipo = document.getElementById('mov-tipo').value
+            if (valor <= 0) { alert('Insira um valor válido.'); return }
+            setLoading(true)
+            try {
+                const inv = AppData.investimentos.find(i => i.id === id)
+                await db.from('movimentacoes').insert({ investimento_id: id, data: new Date().toLocaleDateString('pt-BR'), tipo, valor })
+                if (inv) {
+                    const novoValor = tipo === 'Aporte' ? inv.valorAtual + valor : Math.max(0, inv.valorAtual - valor)
+                    await db.from('investimentos').update({ valor_atual: novoValor }).eq('id', id)
+                }
+                await carregarDados()
+                openModalGerenciar(id)
+                document.getElementById('mov-valor').value = ''
+            } catch (err) {
+                alert('Erro ao adicionar movimentação: ' + err.message)
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        async function excluirAtivoCompleto() {
+            if (!confirm('Tem certeza que deseja deletar permanentemente este ativo e todo o histórico dele?')) return
+            setLoading(true)
+            try {
+                const id = parseInt(document.getElementById('edit-id').value)
+                await db.from('investimentos').delete().eq('id', id)
+                closeModalGerenciar()
+                await carregarDados()
+            } catch (err) {
+                alert('Erro ao excluir: ' + err.message)
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        async function salvarMetaGlobal() {
+            setLoading(true)
+            try {
+                const meta = parseFloat(document.getElementById('input-meta-patrimonio').value) || 0
+                await db.from('config').upsert(
+                    { user_id: currentUser.id, chave: 'meta_patrimonio', valor: String(meta) },
+                    { onConflict: 'user_id,chave' }
+                )
+                AppData.metaPatrimonio = meta
+                alert('Meta atualizada com sucesso!')
+                renderApp()
+            } catch (err) {
+                alert('Erro ao salvar meta: ' + err.message)
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        async function carregarDadosDemo() {
+            setLoading(true)
+            try {
+                await db.from('investimentos').delete().eq('user_id', currentUser.id)
+                await db.from('config').upsert(
+                    { user_id: currentUser.id, chave: 'meta_patrimonio', valor: '150000' },
+                    { onConflict: 'user_id,chave' }
+                )
+                const demos = [
+                    { banco: 'Tesouro Direto', nome: 'Tesouro IPCA+ 2035', categoria: 'Tesouro Direto', valor_atual: 32500, aporte: 30000, data: '10/01/2025' },
+                    { banco: 'XP Investimentos', nome: 'Trend Bolsa Americana FIM', categoria: 'Fundos de Investimento', valor_atual: 16200, aporte: 15000, data: '12/01/2025' },
+                    { banco: 'Banco Inter', nome: 'Ações PETR4', categoria: 'Ações', valor_atual: 18500, aporte: 15000, data: '15/01/2025' },
+                    { banco: 'NuInvest', nome: 'FII HGLG11', categoria: 'Fundos Imobiliários', valor_atual: 19800, aporte: 20000, data: '20/01/2025' }
+                ]
+                for (const item of demos) {
+                    const newId = Date.now() + Math.floor(Math.random() * 10000)
+                    await db.from('investimentos').insert({ id: newId, user_id: currentUser.id, banco: item.banco, nome: item.nome, categoria: item.categoria, valor_atual: item.valor_atual })
+                    await db.from('movimentacoes').insert({ investimento_id: newId, data: item.data, tipo: 'Aporte', valor: item.aporte })
+                }
+                document.getElementById('input-meta-patrimonio').value = 150000
+                await carregarDados()
+                alert('Massa de dados Demo injetada!')
+            } catch (err) {
+                alert('Erro: ' + err.message)
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        async function limparSistema() {
+            if (!confirm('Deseja zerar todos os dados salvos?')) return
+            setLoading(true)
+            try {
+                await db.from('investimentos').delete().eq('user_id', currentUser.id)
+                await db.from('config').delete().eq('user_id', currentUser.id)
+                AppData = { metaPatrimonio: 0, investimentos: [] }
+                document.getElementById('input-meta-patrimonio').value = ''
+                renderApp()
+            } catch (err) {
+                alert('Erro: ' + err.message)
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        // ── EXCEL EXPORT ──────────────────────────────────────────────
+        function exportarParaExcel() {
+            if (AppData.investimentos.length === 0) { alert('Nenhum dado registrado para exportar.'); return }
+            const wb = XLSX.utils.book_new()
+            const carteiraRows = [['Banco / Corretora','Investimento','Categoria','Aportes Líquidos (R$)','Valor Atualizado (R$)','Lucro / Prejuízo (R$)','Rentabilidade (%)']]
+            AppData.investimentos.forEach(inv => {
+                const ap = inv.historico.reduce((a, m) => m.tipo === 'Aporte' ? a + m.valor : a - m.valor, 0)
+                const lc = inv.valorAtual - ap
+                const rt = ap > 0 ? (lc / ap) * 100 : 0
+                carteiraRows.push([inv.banco, inv.nome, inv.categoria, +ap.toFixed(2), +inv.valorAtual.toFixed(2), +lc.toFixed(2), +rt.toFixed(2)])
+            })
+            const wsC = XLSX.utils.aoa_to_sheet(carteiraRows)
+            wsC['!cols'] = [22,30,22,22,22,22,18].map(w => ({ wch: w }))
+            XLSX.utils.book_append_sheet(wb, wsC, 'Carteira')
+            const histRows = [['Data','Banco / Corretora','Investimento','Categoria','Tipo','Valor (R$)']]
+            AppData.investimentos.forEach(inv => inv.historico.forEach(m => histRows.push([m.data, inv.banco, inv.nome, inv.categoria, m.tipo, +m.valor.toFixed(2)])))
+            const wsH = XLSX.utils.aoa_to_sheet(histRows)
+            wsH['!cols'] = [14,22,30,22,12,16].map(w => ({ wch: w }))
+            XLSX.utils.book_append_sheet(wb, wsH, 'Histórico')
+            const hoje = new Date().toLocaleDateString('pt-BR')
+            XLSX.writeFile(wb, `Premium_Invest_${hoje.replace(/\//g,'-')}.xlsx`)
+        }
+
+        window.addEventListener('DOMContentLoaded', inicializar)
+    </script>
+</body>
+</html>
