@@ -9,7 +9,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
     <style>
         body { background-color: #0b0f19; color: #f3f4f6; font-family: system-ui, -apple-system, sans-serif; }
         .card-premium { background: linear-gradient(145deg, #111827, #1f2937); border: 1px solid #374151; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.5); }
@@ -78,6 +77,9 @@
                 <button onclick="switchView('configuracoes')" id="btn-nav-configuracoes" class="w-full flex items-center gap-3 px-4 py-3 text-left rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white transition">
                     <i class="fa-solid fa-sliders w-5"></i> Metas & Dados
                 </button>
+                <button onclick="switchView('avaliacao')" id="btn-nav-avaliacao" class="w-full flex items-center gap-3 px-4 py-3 text-left rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white transition">
+                    <i class="fa-solid fa-percent w-5"></i> Avaliação TIR
+                </button>
             </nav>
         </div>
         <div class="mt-6 pt-4 border-t border-gray-800 space-y-2">
@@ -91,7 +93,6 @@
 
     <!-- CONTEÚDO PRINCIPAL -->
     <main class="flex-1 p-4 md:p-8 overflow-y-auto max-w-[1600px] mx-auto w-full">
-
         <!-- HEADER -->
         <div class="card-premium p-4 rounded-xl mb-6 flex items-center justify-between">
             <div>
@@ -123,31 +124,27 @@
                     <h3 id="card-rentabilidade" class="text-3xl font-bold mt-1">0,00%</h3>
                 </div>
             </div>
-
-            <!-- Meta Patrimonial -->
             <div class="card-premium p-5 rounded-xl">
                 <div class="flex justify-between items-center mb-3">
                     <h4 class="font-bold text-gray-300"><i class="fa-solid fa-bullseye text-red-500 mr-2"></i>Meta de Acumulação</h4>
-                    <span id="meta-percentual" class="text-sm font-bold bg-gray-800 text-blue-400 px-2 py-0.5 rounded">0%</span>
+                    <span id="meta-percentual" class="text-sm font-bold bg-gray-800 text-blue-400 px-3 py-1 rounded-full">0.0%</span>
                 </div>
                 <div class="w-full bg-gray-700 rounded-full h-3 mb-4 overflow-hidden">
-                    <div id="meta-barra-progresso" class="bg-gradient-to-r from-blue-500 to-emerald-500 h-3 rounded-full transition-all" style="width: 0%"></div>
+                    <div id="meta-barra-progresso" class="bg-gradient-to-r from-blue-500 to-emerald-400 h-3 rounded-full transition-all duration-700" style="width:0%"></div>
                 </div>
                 <div class="grid grid-cols-3 gap-2 text-center text-xs">
-                    <div class="bg-gray-800/40 p-2 rounded">Alvo: <span id="meta-v-alvo" class="font-bold block text-sm mt-0.5">R$ 0,00</span></div>
-                    <div class="bg-gray-800/40 p-2 rounded">Atual: <span id="meta-v-atual" class="font-bold block text-sm mt-0.5 text-blue-400">R$ 0,00</span></div>
-                    <div class="bg-gray-800/40 p-2 rounded">Faltam: <span id="meta-v-restante" class="font-bold block text-sm mt-0.5">R$ 0,00</span></div>
+                    <div class="bg-gray-800/40 p-2 rounded">Alvo: <span id="meta-v-alvo" class="font-bold text-white">R$ 0,00</span></div>
+                    <div class="bg-gray-800/40 p-2 rounded">Atual: <span id="meta-v-atual" class="font-bold text-blue-400">R$ 0,00</span></div>
+                    <div class="bg-gray-800/40 p-2 rounded">Faltam: <span id="meta-v-restante" class="font-bold text-gray-300">R$ 0,00</span></div>
                 </div>
             </div>
-
-            <!-- Gráficos -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="card-premium p-6 rounded-xl">
-                    <h5 class="text-sm font-bold mb-4 text-gray-300 uppercase tracking-wider border-b border-gray-800 pb-2"><i class="fa-solid fa-pie-chart text-blue-500 mr-2"></i>Alocação por Categoria de Investimento</h5>
+                    <h5 class="text-sm font-bold mb-4 text-gray-300 uppercase tracking-wider border-b border-gray-800 pb-2"><i class="fa-solid fa-chart-pie text-blue-400 mr-2"></i>Alocação por Categoria de Investimento</h5>
                     <div class="relative w-full h-72"><canvas id="chartCategoria"></canvas></div>
                 </div>
                 <div class="card-premium p-6 rounded-xl">
-                    <h5 class="text-sm font-bold mb-4 text-gray-300 uppercase tracking-wider border-b border-gray-800 pb-2"><i class="fa-solid fa-building-columns text-emerald-500 mr-2"></i>Concentração de Recursos por Banco</h5>
+                    <h5 class="text-sm font-bold mb-4 text-gray-300 uppercase tracking-wider border-b border-gray-800 pb-2"><i class="fa-solid fa-building-columns text-emerald-400 mr-2"></i>Concentração de Recursos por Banco</h5>
                     <div class="relative w-full h-72"><canvas id="chartBanco"></canvas></div>
                 </div>
             </div>
@@ -157,7 +154,9 @@
         <section id="view-carteira" class="hidden space-y-6">
             <div class="flex items-center justify-between">
                 <h2 class="text-xl font-bold">Gerenciamento de Ativos</h2>
-                <button onclick="openModalCadastro()" class="bg-blue-600 hover:bg-blue-700 text-sm font-semibold px-4 py-2 rounded-lg transition"><i class="fa-solid fa-plus mr-2"></i>Registrar Nova Operação</button>
+                <button onclick="openModalCadastro()" class="bg-blue-600 hover:bg-blue-700 text-sm font-semibold px-4 py-2 rounded-lg transition flex items-center gap-2">
+                    <i class="fa-solid fa-plus"></i> Novo Investimento
+                </button>
             </div>
             <div class="card-premium rounded-xl overflow-hidden">
                 <table class="w-full text-left border-collapse text-sm">
@@ -209,10 +208,72 @@
                     <p class="text-xs text-gray-400">Gere dados históricos fictícios para testes ou apague todos os registros.</p>
                     <div class="grid grid-cols-2 gap-2">
                         <button onclick="carregarDadosDemo()" class="bg-gray-800 hover:bg-gray-700 text-xs py-2.5 rounded-lg border border-gray-700 transition">Injetar Histórico Demo</button>
-                        <button onclick="limparSistema()" class="bg-red-950/40 text-red-400 hover:bg-red-900/40 text-xs py-2.5 rounded-lg border border-red-900 transition">Zerar Tudo</button>
+                        <button onclick="limparTodosDados()" class="bg-red-950/40 text-red-400 hover:bg-red-900/40 text-xs py-2.5 rounded-lg border border-red-900 transition">Zerar Tudo</button>
                     </div>
                 </div>
             </div>
+        </section>
+
+        <!-- ABA 5: AVALIAÇÃO TIR -->
+        <section id="view-avaliacao" class="hidden space-y-6">
+            <div class="card-premium p-5 rounded-xl space-y-4">
+                <h3 class="text-base font-bold border-b border-gray-800 pb-2">Parâmetros da Avaliação</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Data Início</label>
+                        <input type="date" id="tir-data-inicio" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Data Fim</label>
+                        <input type="date" id="tir-data-fim" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-sm">
+                    </div>
+                </div>
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="text-xs text-gray-400 font-medium uppercase">Investimentos</label>
+                        <button onclick="toggleTodosInvestimentos()" class="text-xs text-blue-400 hover:text-blue-300 transition">Marcar / Desmarcar todos</button>
+                    </div>
+                    <div id="tir-checkboxes" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1"></div>
+                </div>
+                <button onclick="calcularTIR()" class="bg-blue-600 hover:bg-blue-700 text-sm font-bold px-6 py-2.5 rounded-lg transition flex items-center gap-2">
+                    <i class="fa-solid fa-calculator"></i> Calcular TIR
+                </button>
+            </div>
+            <div id="tir-resultados" class="hidden space-y-4">
+                <div class="card-premium p-5 rounded-xl border border-blue-900/40">
+                    <div class="flex items-center justify-between flex-wrap gap-3">
+                        <div>
+                            <p class="text-xs text-gray-400 uppercase font-medium">TIR Combinada (todos selecionados)</p>
+                            <p id="tir-combinada-valor" class="text-3xl font-black text-blue-400 mt-1">—</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs text-gray-400">Período</p>
+                            <p id="tir-periodo-label" class="text-sm text-gray-300 font-medium mt-0.5">—</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-premium rounded-xl overflow-hidden">
+                    <div class="bg-gray-800/60 px-5 py-3 border-b border-gray-700">
+                        <h4 class="text-sm font-bold">TIR por Investimento</h4>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead>
+                                <tr class="bg-gray-900/60 text-gray-400 text-xs uppercase border-b border-gray-800">
+                                    <th class="px-4 py-3">Investimento</th>
+                                    <th class="px-4 py-3">Banco</th>
+                                    <th class="px-4 py-3 text-right">Saldo Inicial</th>
+                                    <th class="px-4 py-3 text-right">Aportes Líq.</th>
+                                    <th class="px-4 py-3 text-right">Saldo Final</th>
+                                    <th class="px-4 py-3 text-right">TIR a.a.</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tir-tabela-body" class="divide-y divide-gray-800"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div id="tir-sem-dados" class="hidden card-premium p-6 rounded-xl text-center text-gray-500 italic text-sm"></div>
         </section>
     </main>
 
@@ -377,6 +438,20 @@
             document.getElementById('loading-overlay').classList.toggle('hidden', !on)
         }
 
+        // ── HELPERS DE DATA ───────────────────────────────────────────
+        function hojeISO() { return new Date().toISOString().split('T')[0] }
+        function isoParaBR(iso) {
+            if (!iso) return ''
+            const [y, m, d] = iso.split('-')
+            return `${d}/${m}/${y}`
+        }
+        function dataParaISO(str) {
+            if (!str) return hojeISO()
+            if (str.includes('-')) return str
+            const [d, m, y] = str.split('/')
+            return `${y}-${m}-${d}`
+        }
+
         // ── AUTH ──────────────────────────────────────────────────────
         async function inicializar() {
             const { data: { session } } = await db.auth.getSession()
@@ -387,7 +462,6 @@
             } else {
                 mostrarLogin()
             }
-
             db.auth.onAuthStateChange(async (event, session) => {
                 if (session) {
                     currentUser = session.user
@@ -403,7 +477,6 @@
         function mostrarLogin() {
             document.getElementById('tela-login').classList.remove('hidden')
         }
-
         function mostrarApp() {
             document.getElementById('tela-login').classList.add('hidden')
             document.getElementById('usuario-email').textContent = currentUser?.email || ''
@@ -414,18 +487,14 @@
             const senha = document.getElementById('login-senha').value
             const erroEl = document.getElementById('login-erro')
             const btn = document.getElementById('btn-login')
-
             erroEl.classList.add('hidden')
             btn.disabled = true
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Entrando...'
-
             const { error } = await db.auth.signInWithPassword({ email, password: senha })
-
             btn.disabled = false
             btn.innerHTML = '<i class="fa-solid fa-right-to-bracket mr-2"></i>Entrar'
-
             if (error) {
-                erroEl.textContent = 'E-mail ou senha incorretos.'
+                erroEl.textContent = error.message || 'E-mail ou senha incorretos.'
                 erroEl.classList.remove('hidden')
             }
         }
@@ -437,21 +506,6 @@
         }
 
         // ── DATA ──────────────────────────────────────────────────────
-        // ── HELPERS DE DATA ───────────────────────────────────────────
-        function hojeISO() { return new Date().toISOString().split('T')[0] }
-        function isoParaBR(iso) {
-            if (!iso) return ''
-            const [y, m, d] = iso.split('-')
-            return `${d}/${m}/${y}`
-        }
-        function dataParaISO(str) {
-            // aceita yyyy-mm-dd ou dd/mm/yyyy
-            if (!str) return hojeISO()
-            if (str.includes('-')) return str
-            const [d, m, y] = str.split('/')
-            return `${y}-${m}-${d}`
-        }
-
         async function carregarDados() {
             setLoading(true)
             try {
@@ -461,10 +515,8 @@
                     db.from('movimentacoes').select('*').order('id'),
                     db.from('historico_valores').select('*').order('data')
                 ])
-
                 const metaRow = (cfgData || []).find(c => c.chave === 'meta_patrimonio')
                 AppData.metaPatrimonio = metaRow ? parseFloat(metaRow.valor) : 0
-
                 AppData.investimentos = (invData || []).map(inv => {
                     const saldos = (valData || [])
                         .filter(v => v.investimento_id === inv.id)
@@ -483,7 +535,6 @@
                             .map(m => ({ id: m.id, data: m.data, tipo: m.tipo, valor: parseFloat(m.valor), descricao: m.descricao || '' }))
                     }
                 })
-
                 document.getElementById('input-meta-patrimonio').value = AppData.metaPatrimonio || ''
                 renderApp()
             } catch (err) {
@@ -495,14 +546,15 @@
 
         // ── VIEWS ─────────────────────────────────────────────────────
         function switchView(viewKey) {
-            ['dashboard', 'carteira', 'instituicoes', 'configuracoes'].forEach(v => {
+            ['dashboard', 'carteira', 'instituicoes', 'configuracoes', 'avaliacao'].forEach(v => {
                 document.getElementById(`view-${v}`).classList.add('hidden')
                 document.getElementById(`btn-nav-${v}`).classList.remove('sidebar-item-active')
             })
             document.getElementById(`view-${viewKey}`).classList.remove('hidden')
             document.getElementById(`btn-nav-${viewKey}`).classList.add('sidebar-item-active')
-            const titles = { dashboard: 'Dashboard Geral', carteira: 'Minha Carteira', instituicoes: 'Instituições', configuracoes: 'Metas & Dados' }
+            const titles = { dashboard: 'Dashboard Geral', carteira: 'Minha Carteira', instituicoes: 'Instituições', configuracoes: 'Metas & Dados', avaliacao: 'Avaliação de Retorno (TIR)' }
             document.getElementById('view-title').innerText = titles[viewKey]
+            if (viewKey === 'avaliacao') renderAvaliacaoInputs()
         }
 
         function formatBRL(v) {
@@ -513,7 +565,6 @@
         function renderApp() {
             let totalAtual = 0, totalAplicadoLiquido = 0
             let catMap = {}, bancoMap = {}
-
             AppData.investimentos.forEach(inv => {
                 let soma = inv.historico.reduce((acc, m) => m.tipo === 'Aporte' ? acc + m.valor : acc - m.valor, 0)
                 totalAtual += inv.valorAtual
@@ -521,15 +572,12 @@
                 catMap[inv.categoria] = (catMap[inv.categoria] || 0) + inv.valorAtual
                 bancoMap[inv.banco] = (bancoMap[inv.banco] || 0) + inv.valorAtual
             })
-
             let ganho = totalAtual - totalAplicadoLiquido
             let rent = totalAplicadoLiquido > 0 ? (ganho / totalAplicadoLiquido) * 100 : 0
-
             document.getElementById('card-patrimonio-total').innerText = formatBRL(totalAtual)
             document.getElementById('card-total-aplicado').innerText = formatBRL(totalAplicadoLiquido)
             document.getElementById('card-ganho-perda').innerText = formatBRL(ganho)
             document.getElementById('card-rentabilidade').innerText = `${rent >= 0 ? '+' : ''}${rent.toFixed(2)}%`
-
             let meta = AppData.metaPatrimonio || 0
             let pct = meta > 0 ? (totalAtual / meta) * 100 : 0
             document.getElementById('meta-percentual').innerText = `${pct.toFixed(1)}%`
@@ -537,7 +585,6 @@
             document.getElementById('meta-v-alvo').innerText = formatBRL(meta)
             document.getElementById('meta-v-atual').innerText = formatBRL(totalAtual)
             document.getElementById('meta-v-restante').innerText = formatBRL(Math.max(0, meta - totalAtual))
-
             renderTabelas()
             renderInstituicoes(bancoMap)
             renderGraficos(catMap, bancoMap)
@@ -547,7 +594,6 @@
             const tbody = document.getElementById('table-investimentos-body')
             tbody.innerHTML = AppData.investimentos.length === 0
                 ? '<tr><td colspan="7" class="p-4 text-center text-gray-500 italic">Nenhum ativo registrado.</td></tr>' : ''
-
             AppData.investimentos.forEach(inv => {
                 let soma = inv.historico.reduce((acc, m) => m.tipo === 'Aporte' ? acc + m.valor : acc - m.valor, 0)
                 let r = soma > 0 ? ((inv.valorAtual - soma) / soma) * 100 : 0
@@ -622,7 +668,6 @@
             document.getElementById('edit-categoria').value = inv.categoria
             document.getElementById('edit-titulo-modal').innerText = inv.nome
             document.getElementById('edit-subtitulo-modal').innerText = `${inv.categoria} • ${inv.banco}`
-            // pré-preencher datas com hoje
             document.getElementById('saldo-data').value = hojeISO()
             document.getElementById('saldo-valor').value = ''
             document.getElementById('mov-data').value = hojeISO()
@@ -635,7 +680,6 @@
         }
 
         function renderHistoricoUnificado(inv) {
-            // Unir saldos e movimentações, ordenar por data desc
             const itens = []
             inv.saldos.forEach(s => itens.push({ tipo: 'Saldo', data: s.data, valor: s.valor, descricao: '', id: s.id, fonte: 'saldo' }))
             inv.historico.forEach(m => itens.push({ tipo: m.tipo, data: dataParaISO(m.data), valor: m.valor, descricao: m.descricao, id: m.id, fonte: 'mov' }))
@@ -646,14 +690,21 @@
             itens.forEach(item => {
                 const corTipo = item.fonte === 'saldo' ? 'text-blue-400' :
                     item.tipo === 'Aporte' ? 'text-emerald-400' : 'text-red-400'
+                const desc = (item.descricao || '').replace(/'/g, "\\'")
                 tbody.innerHTML += `<tr>
                     <td class="p-2.5 text-gray-400">${isoParaBR(item.data)}</td>
                     <td class="p-2.5"><span class="${corTipo} font-medium">${item.tipo}</span></td>
                     <td class="p-2.5 text-right font-mono">${formatBRL(item.valor)}</td>
                     <td class="p-2.5 text-gray-500 italic text-xs">${item.descricao || '—'}</td>
                     <td class="p-2.5 text-center whitespace-nowrap">
-                        <button onclick="${item.fonte === 'saldo' ? `prepararEdicaoSaldo(${item.id},${item.valor},'${item.data}')` : `prepararEdicaoMov(${item.id},${item.valor},'${item.data}','${item.tipo}','${item.descricao.replace(/'/g,"\\'")}')` }" class="text-gray-500 hover:text-blue-400 px-1 transition" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
-                        <button onclick="${item.fonte === 'saldo' ? `excluirSaldo(${item.id})` : `excluirMovimentacao(${item.id})`}" class="text-gray-500 hover:text-red-400 px-1 transition" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                        <button onclick="${item.fonte === 'saldo'
+                            ? `prepararEdicaoSaldo(${item.id},${item.valor},'${item.data}')`
+                            : `prepararEdicaoMov(${item.id},${item.valor},'${item.data}','${item.tipo}','${desc}')`
+                        }" class="text-gray-500 hover:text-blue-400 px-1 transition" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
+                        <button onclick="${item.fonte === 'saldo'
+                            ? `excluirSaldo(${item.id})`
+                            : `excluirMovimentacao(${item.id})`
+                        }" class="text-gray-500 hover:text-red-400 px-1 transition" title="Excluir"><i class="fa-solid fa-trash"></i></button>
                     </td>
                 </tr>`
             })
@@ -709,7 +760,6 @@
                 } else {
                     await db.from('historico_valores').insert({ investimento_id: invId, user_id: currentUser.id, data, valor })
                 }
-                // Atualiza valor_atual com o saldo mais recente
                 const { data: todos } = await db.from('historico_valores').select('data,valor').eq('investimento_id', invId).order('data', { ascending: false }).limit(1)
                 if (todos && todos.length > 0) {
                     await db.from('investimentos').update({ valor_atual: todos[0].valor }).eq('id', invId)
@@ -729,7 +779,6 @@
             setLoading(true)
             try {
                 await db.from('historico_valores').delete().eq('id', id)
-                // Recalcula valor_atual
                 const { data: todos } = await db.from('historico_valores').select('data,valor').eq('investimento_id', invId).order('data', { ascending: false }).limit(1)
                 const novoValor = todos && todos.length > 0 ? todos[0].valor : 0
                 await db.from('investimentos').update({ valor_atual: novoValor }).eq('id', invId)
@@ -770,7 +819,6 @@
             const tipo = document.getElementById('mov-tipo').value
             const valor = parseFloat(document.getElementById('mov-valor').value)
             const descricao = document.getElementById('mov-descricao').value.trim() || null
-            if (!valor || valor <= 0) { alert('Informe um valor válido.'); return }
             if (!valor || valor <= 0) { alert('Informe um valor válido.'); return }
             setLoading(true)
             try {
@@ -818,6 +866,150 @@
             }
         }
 
+        // ── TIR / XIRR ───────────────────────────────────────────────
+        function xirr(cfs, dates, guess = 0.1) {
+            const MAX = 300, TOL = 1e-8
+            let r = guess
+            for (let i = 0; i < MAX; i++) {
+                let f = 0, df = 0
+                for (let j = 0; j < cfs.length; j++) {
+                    const t = (dates[j] - dates[0]) / (365.25 * 86400 * 1000)
+                    const d = Math.pow(1 + r, t)
+                    f  += cfs[j] / d
+                    df -= t * cfs[j] / (d * (1 + r))
+                }
+                if (Math.abs(df) < 1e-15) break
+                const r1 = r - f / df
+                if (Math.abs(r1 - r) < TOL) return r1
+                r = r1
+                if (r <= -1) r = -0.99
+            }
+            return NaN
+        }
+
+        function saldoEmData(inv, isoDate) {
+            const candidatos = inv.saldos.filter(s => s.data <= isoDate)
+            if (candidatos.length === 0) return null
+            candidatos.sort((a, b) => b.data.localeCompare(a.data))
+            return candidatos[0]
+        }
+
+        function movsNoPeriodo(inv, isoInicio, isoFim) {
+            return inv.historico.filter(m => {
+                const iso = dataParaISO(m.data)
+                return iso > isoInicio && iso <= isoFim
+            })
+        }
+
+        function renderAvaliacaoInputs() {
+            if (!document.getElementById('tir-data-inicio').value) {
+                const umAnoAtras = new Date()
+                umAnoAtras.setFullYear(umAnoAtras.getFullYear() - 1)
+                document.getElementById('tir-data-inicio').value = umAnoAtras.toISOString().split('T')[0]
+            }
+            if (!document.getElementById('tir-data-fim').value) {
+                document.getElementById('tir-data-fim').value = hojeISO()
+            }
+            const container = document.getElementById('tir-checkboxes')
+            container.innerHTML = ''
+            AppData.investimentos.forEach(inv => {
+                container.innerHTML += `
+                <label class="flex items-center gap-2 bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 cursor-pointer hover:border-blue-700 transition text-xs">
+                    <input type="checkbox" class="tir-cb accent-blue-500" value="${inv.id}" checked>
+                    <span class="text-gray-300 truncate">${inv.nome} <span class="text-gray-600">· ${inv.banco}</span></span>
+                </label>`
+            })
+        }
+
+        function toggleTodosInvestimentos() {
+            const cbs = document.querySelectorAll('.tir-cb')
+            const algumMarcado = [...cbs].some(c => c.checked)
+            cbs.forEach(c => c.checked = !algumMarcado)
+        }
+
+        function calcularTIR() {
+            const isoInicio = document.getElementById('tir-data-inicio').value
+            const isoFim = document.getElementById('tir-data-fim').value
+            if (!isoInicio || !isoFim || isoInicio >= isoFim) {
+                alert('Selecione um período válido (início < fim).'); return
+            }
+            const idsSelecionados = [...document.querySelectorAll('.tir-cb:checked')].map(c => parseInt(c.value))
+            if (idsSelecionados.length === 0) { alert('Selecione ao menos um investimento.'); return }
+
+            const resultados = []
+            const cfsCombinados = [], datesCombinadas = []
+
+            idsSelecionados.forEach(id => {
+                const inv = AppData.investimentos.find(i => i.id === id)
+                if (!inv) return
+                const sInicial = saldoEmData(inv, isoInicio)
+                const sFinal   = saldoEmData(inv, isoFim)
+                if (!sInicial || !sFinal) {
+                    resultados.push({ inv, erro: 'Sem saldo registrado no período' })
+                    return
+                }
+                const movs = movsNoPeriodo(inv, isoInicio, isoFim)
+                const aportesPeriodo = movs.reduce((a, m) => m.tipo === 'Aporte' ? a + m.valor : a - m.valor, 0)
+                const cfs = [-sInicial.valor]
+                const dates = [new Date(isoInicio + 'T12:00:00')]
+                movs.sort((a, b) => dataParaISO(a.data).localeCompare(dataParaISO(b.data)))
+                movs.forEach(m => {
+                    cfs.push(m.tipo === 'Aporte' ? -m.valor : m.valor)
+                    dates.push(new Date(dataParaISO(m.data) + 'T12:00:00'))
+                })
+                cfs.push(sFinal.valor)
+                dates.push(new Date(isoFim + 'T12:00:00'))
+                cfs.forEach((cf, i) => { cfsCombinados.push(cf); datesCombinadas.push(dates[i]) })
+                const taxa = xirr(cfs, dates)
+                resultados.push({ inv, sInicial: sInicial.valor, sFinal: sFinal.valor, aportesPeriodo, taxa })
+            })
+
+            const pares = cfsCombinados.map((cf, i) => ({ cf, date: datesCombinadas[i] }))
+            pares.sort((a, b) => a.date - b.date)
+            const taxaCombinada = pares.length >= 2
+                ? xirr(pares.map(p => p.cf), pares.map(p => p.date))
+                : NaN
+            renderResultadosTIR(resultados, taxaCombinada, isoInicio, isoFim)
+        }
+
+        function renderResultadosTIR(resultados, taxaCombinada, isoInicio, isoFim) {
+            document.getElementById('tir-resultados').classList.remove('hidden')
+            document.getElementById('tir-sem-dados').classList.add('hidden')
+            const tcEl = document.getElementById('tir-combinada-valor')
+            if (!isNaN(taxaCombinada) && isFinite(taxaCombinada)) {
+                const pct = (taxaCombinada * 100).toFixed(2)
+                tcEl.textContent = `${pct >= 0 ? '+' : ''}${pct}% a.a.`
+                tcEl.className = `text-3xl font-black mt-1 ${taxaCombinada >= 0 ? 'text-blue-400' : 'text-red-400'}`
+            } else {
+                tcEl.textContent = 'Não calculável'
+                tcEl.className = 'text-3xl font-black mt-1 text-gray-500'
+            }
+            document.getElementById('tir-periodo-label').textContent = `${isoParaBR(isoInicio)} → ${isoParaBR(isoFim)}`
+            const tbody = document.getElementById('tir-tabela-body')
+            tbody.innerHTML = ''
+            resultados.forEach(r => {
+                if (r.erro) {
+                    tbody.innerHTML += `<tr class="text-xs">
+                        <td class="px-4 py-3 text-blue-400 font-medium">${r.inv.nome}</td>
+                        <td class="px-4 py-3 text-gray-500">${r.inv.banco}</td>
+                        <td colspan="4" class="px-4 py-3 text-amber-500 italic">${r.erro}</td>
+                    </tr>`
+                    return
+                }
+                const pct = !isNaN(r.taxa) && isFinite(r.taxa) ? (r.taxa * 100).toFixed(2) : null
+                const corTaxa = pct === null ? 'text-gray-500' : parseFloat(pct) >= 0 ? 'text-emerald-400' : 'text-red-400'
+                tbody.innerHTML += `<tr class="text-xs hover:bg-gray-900/40 transition">
+                    <td class="px-4 py-3 text-blue-400 font-medium">${r.inv.nome}</td>
+                    <td class="px-4 py-3 text-gray-400">${r.inv.banco}</td>
+                    <td class="px-4 py-3 text-right font-mono text-gray-300">${formatBRL(r.sInicial)}</td>
+                    <td class="px-4 py-3 text-right font-mono ${r.aportesPeriodo >= 0 ? 'text-emerald-300' : 'text-red-300'}">${r.aportesPeriodo >= 0 ? '+' : ''}${formatBRL(r.aportesPeriodo)}</td>
+                    <td class="px-4 py-3 text-right font-mono text-gray-300">${formatBRL(r.sFinal)}</td>
+                    <td class="px-4 py-3 text-right font-bold ${corTaxa}">${pct !== null ? `${parseFloat(pct) >= 0 ? '+' : ''}${pct}%` : 'N/D'}</td>
+                </tr>`
+            })
+        }
+
+        // ── CONFIG ────────────────────────────────────────────────────
         async function salvarMetaGlobal() {
             setLoading(true)
             try {
