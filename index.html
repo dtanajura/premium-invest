@@ -221,11 +221,15 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs text-gray-400 mb-1">Data Início</label>
-                        <input type="date" id="tir-data-inicio" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-sm">
+                        <select id="tir-data-inicio" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-sm">
+                            <option value="">Selecione um investimento...</option>
+                        </select>
                     </div>
                     <div>
                         <label class="block text-xs text-gray-400 mb-1">Data Fim</label>
-                        <input type="date" id="tir-data-fim" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-sm">
+                        <select id="tir-data-fim" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-sm">
+                            <option value="">Selecione um investimento...</option>
+                        </select>
                     </div>
                 </div>
                 <div>
@@ -265,7 +269,7 @@
                                     <th class="px-4 py-3 text-right">Saldo Inicial</th>
                                     <th class="px-4 py-3 text-right">Aportes Líq.</th>
                                     <th class="px-4 py-3 text-right">Saldo Final</th>
-                                    <th class="px-4 py-3 text-right">TIR a.a.</th>
+                                    <th class="px-4 py-3 text-right">TIR a.m.</th>
                                 </tr>
                             </thead>
                             <tbody id="tir-tabela-body" class="divide-y divide-gray-800"></tbody>
@@ -887,6 +891,11 @@
             return NaN
         }
 
+        function tirAnualParaMensal(taxaAnual) {
+            if (isNaN(taxaAnual) || !isFinite(taxaAnual)) return NaN
+            return Math.pow(1 + taxaAnual, 1 / 12) - 1
+        }
+
         function saldoEmData(inv, isoDate) {
             const candidatos = inv.saldos.filter(s => s.data <= isoDate)
             if (candidatos.length === 0) return null
@@ -902,29 +911,47 @@
         }
 
         function renderAvaliacaoInputs() {
-            if (!document.getElementById('tir-data-inicio').value) {
-                const umAnoAtras = new Date()
-                umAnoAtras.setFullYear(umAnoAtras.getFullYear() - 1)
-                document.getElementById('tir-data-inicio').value = umAnoAtras.toISOString().split('T')[0]
-            }
-            if (!document.getElementById('tir-data-fim').value) {
-                document.getElementById('tir-data-fim').value = hojeISO()
-            }
             const container = document.getElementById('tir-checkboxes')
             container.innerHTML = ''
             AppData.investimentos.forEach(inv => {
                 container.innerHTML += `
                 <label class="flex items-center gap-2 bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 cursor-pointer hover:border-blue-700 transition text-xs">
-                    <input type="checkbox" class="tir-cb accent-blue-500" value="${inv.id}" checked>
+                    <input type="checkbox" class="tir-cb accent-blue-500" value="${inv.id}" checked onchange="atualizarDatasDisponiveis()">
                     <span class="text-gray-300 truncate">${inv.nome} <span class="text-gray-600">· ${inv.banco}</span></span>
                 </label>`
             })
+            atualizarDatasDisponiveis()
+        }
+
+        function atualizarDatasDisponiveis() {
+            const idsSelecionados = [...document.querySelectorAll('.tir-cb:checked')].map(c => parseInt(c.value))
+            const datasSet = new Set()
+            idsSelecionados.forEach(id => {
+                const inv = AppData.investimentos.find(i => i.id === id)
+                if (inv) inv.saldos.forEach(s => datasSet.add(s.data))
+            })
+            const datas = [...datasSet].sort()
+            const iniEl = document.getElementById('tir-data-inicio')
+            const fimEl = document.getElementById('tir-data-fim')
+            const prevIni = iniEl.value
+            const prevFim = fimEl.value
+            iniEl.innerHTML = datas.length === 0 ? '<option value="">Sem saldos registrados</option>' : ''
+            fimEl.innerHTML = datas.length === 0 ? '<option value="">Sem saldos registrados</option>' : ''
+            datas.forEach(d => {
+                iniEl.innerHTML += `<option value="${d}">${isoParaBR(d)}</option>`
+                fimEl.innerHTML += `<option value="${d}">${isoParaBR(d)}</option>`
+            })
+            if (datas.includes(prevIni)) iniEl.value = prevIni
+            else if (datas.length > 0) iniEl.value = datas[0]
+            if (datas.includes(prevFim)) fimEl.value = prevFim
+            else if (datas.length > 0) fimEl.value = datas[datas.length - 1]
         }
 
         function toggleTodosInvestimentos() {
             const cbs = document.querySelectorAll('.tir-cb')
             const algumMarcado = [...cbs].some(c => c.checked)
             cbs.forEach(c => c.checked = !algumMarcado)
+            atualizarDatasDisponiveis()
         }
 
         function calcularTIR() {
@@ -976,10 +1003,11 @@
             document.getElementById('tir-resultados').classList.remove('hidden')
             document.getElementById('tir-sem-dados').classList.add('hidden')
             const tcEl = document.getElementById('tir-combinada-valor')
-            if (!isNaN(taxaCombinada) && isFinite(taxaCombinada)) {
-                const pct = (taxaCombinada * 100).toFixed(2)
-                tcEl.textContent = `${pct >= 0 ? '+' : ''}${pct}% a.a.`
-                tcEl.className = `text-3xl font-black mt-1 ${taxaCombinada >= 0 ? 'text-blue-400' : 'text-red-400'}`
+            const tcMensal = tirAnualParaMensal(taxaCombinada)
+            if (!isNaN(tcMensal)) {
+                const pct = (tcMensal * 100).toFixed(3)
+                tcEl.textContent = `${parseFloat(pct) >= 0 ? '+' : ''}${pct}% a.m.`
+                tcEl.className = `text-3xl font-black mt-1 ${tcMensal >= 0 ? 'text-blue-400' : 'text-red-400'}`
             } else {
                 tcEl.textContent = 'Não calculável'
                 tcEl.className = 'text-3xl font-black mt-1 text-gray-500'
@@ -996,7 +1024,8 @@
                     </tr>`
                     return
                 }
-                const pct = !isNaN(r.taxa) && isFinite(r.taxa) ? (r.taxa * 100).toFixed(2) : null
+                const mensal = tirAnualParaMensal(r.taxa)
+                const pct = !isNaN(mensal) ? (mensal * 100).toFixed(3) : null
                 const corTaxa = pct === null ? 'text-gray-500' : parseFloat(pct) >= 0 ? 'text-emerald-400' : 'text-red-400'
                 tbody.innerHTML += `<tr class="text-xs hover:bg-gray-900/40 transition">
                     <td class="px-4 py-3 text-blue-400 font-medium">${r.inv.nome}</td>
