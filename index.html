@@ -51,7 +51,7 @@
 
     <!-- LOADING OVERLAY -->
     <div id="loading-overlay" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-        <div class="flex flex-col items-center gap-3">
+        <div class="flex flex-col items items-center gap-3">
             <i class="fa-solid fa-spinner fa-spin text-3xl text-blue-400"></i>
             <span class="text-sm text-gray-300">Aguarde...</span>
         </div>
@@ -127,7 +127,7 @@
             <div class="card-premium p-5 rounded-xl">
                 <div class="flex justify-between items-center mb-3">
                     <h4 class="font-bold text-gray-300"><i class="fa-solid fa-bullseye text-red-500 mr-2"></i>Meta de Acumulação</h4>
-                    <span id="meta-percentual" class="text-sm font-bold bg-gray-800 text-blue-400 px-3 py-1 rounded-full">0.0%</span>
+                    <span id="meta-percentual" class="text-sm font-bold bg-gray-800 text-blue-400 px-3 py-1 rounded-full">0,0%</span>
                 </div>
                 <div class="w-full bg-gray-700 rounded-full h-3 mb-4 overflow-hidden">
                     <div id="meta-barra-progresso" class="bg-gradient-to-r from-blue-500 to-emerald-400 h-3 rounded-full transition-all duration-700" style="width:0%"></div>
@@ -199,7 +199,7 @@
                     <h3 class="text-lg font-bold border-b border-gray-800 pb-2">Meta Patrimonial</h3>
                     <div>
                         <label class="block text-xs text-gray-400 mb-1">Definir Valor Alvo (R$)</label>
-                        <input type="number" id="input-meta-patrimonio" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white" placeholder="Ex: 100000">
+                        <input type="text" inputmode="numeric" id="input-meta-patrimonio" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white" placeholder="Ex: 100.000">
                     </div>
                     <button onclick="salvarMetaGlobal()" class="bg-emerald-600 hover:bg-emerald-700 text-sm font-semibold px-4 py-2 rounded-lg w-full transition">Salvar Configuração</button>
                 </div>
@@ -363,7 +363,7 @@
                         </div>
                         <div>
                             <label class="block text-xs text-gray-400 mb-1">Saldo (R$)</label>
-                            <input type="number" id="saldo-valor" step="0.01" class="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-xs" placeholder="0,00">
+                            <input type="text" inputmode="decimal" id="saldo-valor" class="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-xs" placeholder="0,00">
                         </div>
                     </div>
                     <div class="flex gap-2">
@@ -391,7 +391,7 @@
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="block text-xs text-gray-400 mb-1">Valor (R$)</label>
-                            <input type="number" id="mov-valor" step="0.01" class="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-xs" placeholder="0,00">
+                            <input type="text" inputmode="decimal" id="mov-valor" class="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-xs" placeholder="0,00">
                         </div>
                         <div>
                             <label class="block text-xs text-gray-400 mb-1">Descrição (opcional)</label>
@@ -440,6 +440,31 @@
         // ── LOADING ───────────────────────────────────────────────────
         function setLoading(on) {
             document.getElementById('loading-overlay').classList.toggle('hidden', !on)
+        }
+
+        // ── FORMATAÇÃO NUMÉRICA (padrão brasileiro) ───────────────────
+        // Exibe moeda: R$ 1.234,56
+        function formatBRL(v) {
+            return Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+        }
+        // Exibe percentual: "1,23" (sem sinal nem %)
+        function formatPct(num, casas = 2) {
+            return Number(num).toLocaleString('pt-BR', {
+                minimumFractionDigits: casas,
+                maximumFractionDigits: casas
+            })
+        }
+        // Valor para preencher campo de texto: "1.234,56"
+        function formatNumInput(v) {
+            if (v === '' || v === null || v === undefined || isNaN(v)) return ''
+            return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        }
+        // Lê valor de campo de texto no formato BR: "1.234,56" → 1234.56
+        function parseBRL(str) {
+            if (!str) return NaN
+            // Remove separadores de milhar (pontos) e troca vírgula decimal por ponto
+            const limpo = String(str).trim().replace(/\./g, '').replace(',', '.')
+            return parseFloat(limpo)
         }
 
         // ── HELPERS DE DATA ───────────────────────────────────────────
@@ -539,7 +564,8 @@
                             .map(m => ({ id: m.id, data: m.data, tipo: m.tipo, valor: parseFloat(m.valor), descricao: m.descricao || '' }))
                     }
                 })
-                document.getElementById('input-meta-patrimonio').value = AppData.metaPatrimonio || ''
+                document.getElementById('input-meta-patrimonio').value =
+                    AppData.metaPatrimonio ? formatNumInput(AppData.metaPatrimonio) : ''
                 renderApp()
             } catch (err) {
                 alert('Erro ao carregar dados: ' + err.message)
@@ -561,10 +587,6 @@
             if (viewKey === 'avaliacao') renderAvaliacaoInputs()
         }
 
-        function formatBRL(v) {
-            return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-        }
-
         // ── RENDER ────────────────────────────────────────────────────
         function renderApp() {
             let totalAtual = 0, totalAplicadoLiquido = 0
@@ -578,13 +600,14 @@
             })
             let ganho = totalAtual - totalAplicadoLiquido
             let rent = totalAplicadoLiquido > 0 ? (ganho / totalAplicadoLiquido) * 100 : 0
+            const sinal = rent >= 0 ? '+' : ''
             document.getElementById('card-patrimonio-total').innerText = formatBRL(totalAtual)
             document.getElementById('card-total-aplicado').innerText = formatBRL(totalAplicadoLiquido)
             document.getElementById('card-ganho-perda').innerText = formatBRL(ganho)
-            document.getElementById('card-rentabilidade').innerText = `${rent >= 0 ? '+' : ''}${rent.toFixed(2)}%`
+            document.getElementById('card-rentabilidade').innerText = `${sinal}${formatPct(rent)}%`
             let meta = AppData.metaPatrimonio || 0
             let pct = meta > 0 ? (totalAtual / meta) * 100 : 0
-            document.getElementById('meta-percentual').innerText = `${pct.toFixed(1)}%`
+            document.getElementById('meta-percentual').innerText = `${formatPct(pct, 1)}%`
             document.getElementById('meta-barra-progresso').style.width = `${Math.min(pct, 100)}%`
             document.getElementById('meta-v-alvo').innerText = formatBRL(meta)
             document.getElementById('meta-v-atual').innerText = formatBRL(totalAtual)
@@ -601,13 +624,14 @@
             AppData.investimentos.forEach(inv => {
                 let soma = inv.historico.reduce((acc, m) => m.tipo === 'Aporte' ? acc + m.valor : acc - m.valor, 0)
                 let r = soma > 0 ? ((inv.valorAtual - soma) / soma) * 100 : 0
+                const sinal = r >= 0 ? '+' : ''
                 tbody.innerHTML += `<tr>
                     <td class="p-4 font-semibold">${inv.banco}</td>
                     <td class="p-4 text-blue-400 font-medium">${inv.nome}</td>
                     <td class="p-4"><span class="bg-gray-800 text-gray-300 px-2 py-0.5 rounded text-xs">${inv.categoria}</span></td>
                     <td class="p-4 text-right">${formatBRL(soma)}</td>
                     <td class="p-4 text-right text-emerald-400 font-bold">${formatBRL(inv.valorAtual)}</td>
-                    <td class="p-4 text-right font-medium ${inv.valorAtual >= soma ? 'text-emerald-500' : 'text-red-400'}">${r >= 0 ? '+' : ''}${r.toFixed(2)}%</td>
+                    <td class="p-4 text-right font-medium ${inv.valorAtual >= soma ? 'text-emerald-500' : 'text-red-400'}">${sinal}${formatPct(r)}%</td>
                     <td class="p-4 text-center">
                         <button onclick="openModalGerenciar(${inv.id})" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-xs text-gray-300 px-2.5 py-1 rounded transition"><i class="fa-solid fa-gear mr-1"></i>Gerenciar</button>
                     </td>
@@ -738,7 +762,7 @@
         function prepararEdicaoSaldo(id, valor, data) {
             document.getElementById('saldo-edit-id').value = id
             document.getElementById('saldo-data').value = data
-            document.getElementById('saldo-valor').value = valor
+            document.getElementById('saldo-valor').value = formatNumInput(valor)
             document.getElementById('btn-salvar-saldo').textContent = 'Atualizar Saldo'
             document.getElementById('btn-cancelar-saldo').classList.remove('hidden')
         }
@@ -755,8 +779,8 @@
             const invId = parseInt(document.getElementById('edit-id').value)
             const editId = document.getElementById('saldo-edit-id').value
             const data = document.getElementById('saldo-data').value || hojeISO()
-            const valor = parseFloat(document.getElementById('saldo-valor').value)
-            if (!valor || valor <= 0) { alert('Informe um valor válido.'); return }
+            const valor = parseBRL(document.getElementById('saldo-valor').value)
+            if (isNaN(valor) || valor <= 0) { alert('Informe um valor válido (ex: 1.234,56).'); return }
             setLoading(true)
             try {
                 if (editId) {
@@ -799,7 +823,7 @@
         function prepararEdicaoMov(id, valor, data, tipo, descricao) {
             document.getElementById('mov-edit-id').value = id
             document.getElementById('mov-data').value = data
-            document.getElementById('mov-valor').value = valor
+            document.getElementById('mov-valor').value = formatNumInput(valor)
             document.getElementById('mov-tipo').value = tipo
             document.getElementById('mov-descricao').value = descricao
             document.getElementById('btn-salvar-mov').textContent = 'Atualizar Movimentação'
@@ -821,9 +845,9 @@
             const dataISO = document.getElementById('mov-data').value || hojeISO()
             const dataBR = isoParaBR(dataISO)
             const tipo = document.getElementById('mov-tipo').value
-            const valor = parseFloat(document.getElementById('mov-valor').value)
+            const valor = parseBRL(document.getElementById('mov-valor').value)
             const descricao = document.getElementById('mov-descricao').value.trim() || null
-            if (!valor || valor <= 0) { alert('Informe um valor válido.'); return }
+            if (isNaN(valor) || valor <= 0) { alert('Informe um valor válido (ex: 1.234,56).'); return }
             setLoading(true)
             try {
                 if (editId) {
@@ -1005,8 +1029,9 @@
             const tcEl = document.getElementById('tir-combinada-valor')
             const tcMensal = tirAnualParaMensal(taxaCombinada)
             if (!isNaN(tcMensal)) {
-                const pct = (tcMensal * 100).toFixed(3)
-                tcEl.textContent = `${parseFloat(pct) >= 0 ? '+' : ''}${pct}% a.m.`
+                const pctNum = tcMensal * 100
+                const sinal = pctNum >= 0 ? '+' : ''
+                tcEl.textContent = `${sinal}${formatPct(pctNum, 3)}% a.m.`
                 tcEl.className = `text-3xl font-black mt-1 ${tcMensal >= 0 ? 'text-blue-400' : 'text-red-400'}`
             } else {
                 tcEl.textContent = 'Não calculável'
@@ -1025,15 +1050,17 @@
                     return
                 }
                 const mensal = tirAnualParaMensal(r.taxa)
-                const pct = !isNaN(mensal) ? (mensal * 100).toFixed(3) : null
-                const corTaxa = pct === null ? 'text-gray-500' : parseFloat(pct) >= 0 ? 'text-emerald-400' : 'text-red-400'
+                const pctNum = !isNaN(mensal) ? mensal * 100 : null
+                const pctStr = pctNum !== null ? formatPct(pctNum, 3) : null
+                const corTaxa = pctNum === null ? 'text-gray-500' : pctNum >= 0 ? 'text-emerald-400' : 'text-red-400'
+                const sinal = pctNum !== null && pctNum >= 0 ? '+' : ''
                 tbody.innerHTML += `<tr class="text-xs hover:bg-gray-900/40 transition">
                     <td class="px-4 py-3 text-blue-400 font-medium">${r.inv.nome}</td>
                     <td class="px-4 py-3 text-gray-400">${r.inv.banco}</td>
                     <td class="px-4 py-3 text-right font-mono text-gray-300">${formatBRL(r.sInicial)}</td>
                     <td class="px-4 py-3 text-right font-mono ${r.aportesPeriodo >= 0 ? 'text-emerald-300' : 'text-red-300'}">${r.aportesPeriodo >= 0 ? '+' : ''}${formatBRL(r.aportesPeriodo)}</td>
                     <td class="px-4 py-3 text-right font-mono text-gray-300">${formatBRL(r.sFinal)}</td>
-                    <td class="px-4 py-3 text-right font-bold ${corTaxa}">${pct !== null ? `${parseFloat(pct) >= 0 ? '+' : ''}${pct}%` : 'N/D'}</td>
+                    <td class="px-4 py-3 text-right font-bold ${corTaxa}">${pctStr !== null ? `${sinal}${pctStr}%` : 'N/D'}</td>
                 </tr>`
             })
         }
@@ -1042,7 +1069,7 @@
         async function salvarMetaGlobal() {
             setLoading(true)
             try {
-                const meta = parseFloat(document.getElementById('input-meta-patrimonio').value) || 0
+                const meta = parseBRL(document.getElementById('input-meta-patrimonio').value) || 0
                 await db.from('config').upsert(
                     { user_id: currentUser.id, chave: 'meta_patrimonio', valor: String(meta) },
                     { onConflict: 'user_id,chave' }
