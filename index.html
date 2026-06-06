@@ -220,11 +220,10 @@
     <div id="modal-cadastro" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="card-premium w-full max-w-md rounded-2xl overflow-hidden">
             <div class="bg-gray-800/60 px-6 py-4 border-b border-gray-700 flex justify-between items-center">
-                <h3 class="font-bold">Lançar Nova Movimentação</h3>
+                <h3 class="font-bold">Cadastrar Investimento</h3>
                 <button onclick="closeModalCadastro()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            <form onsubmit="criarOuAportarAtivo(event)" class="p-6 space-y-4 text-sm">
-                <p class="text-xs text-amber-400 bg-amber-950/20 p-2 rounded border border-amber-900/40">Dica: Se o Banco e o Nome forem idênticos a um ativo existente, o sistema somará os valores e registrará no histórico dele automaticamente!</p>
+            <form onsubmit="cadastrarInvestimento(event)" class="p-6 space-y-4 text-sm">
                 <div>
                     <label class="block text-xs text-gray-400 mb-1">Banco / Corretora</label>
                     <input type="text" id="cad-banco" required class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white" placeholder="Ex: XP, Inter, Nu">
@@ -245,17 +244,7 @@
                         <option value="Outros">Outros</option>
                     </select>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs text-gray-400 mb-1">Valor do Aporte (R$)</label>
-                        <input type="number" id="cad-val-aplicado" step="0.01" required class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white">
-                    </div>
-                    <div>
-                        <label class="block text-xs text-gray-400 mb-1">Valor Atualizado Total (R$)</label>
-                        <input type="number" id="cad-val-atual" step="0.01" required class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white" placeholder="Se novo, igual ao aporte">
-                    </div>
-                </div>
-                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded-lg font-bold transition">Confirmar Lançamento</button>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded-lg font-bold transition">Cadastrar</button>
             </form>
         </div>
     </div>
@@ -271,8 +260,9 @@
                 <button onclick="closeModalGerenciar()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-6 space-y-6 text-sm max-h-[80vh] overflow-y-auto">
+                <!-- Dados do ativo -->
                 <div class="space-y-3 bg-gray-900/50 p-4 rounded-xl border border-gray-800">
-                    <h4 class="text-xs font-bold uppercase text-blue-400">Modificar Dados Atuais</h4>
+                    <h4 class="text-xs font-bold uppercase text-blue-400">Dados do Ativo</h4>
                     <input type="hidden" id="edit-id">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
@@ -280,18 +270,51 @@
                             <input type="text" id="edit-nome" class="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-xs">
                         </div>
                         <div>
-                            <label class="block text-xs text-gray-400 mb-1">Preço/Valor de Mercado Atual (R$)</label>
-                            <input type="number" id="edit-valor-atual" step="0.01" class="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-xs">
+                            <label class="block text-xs text-gray-400 mb-1">Categoria</label>
+                            <select id="edit-categoria" class="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-xs">
+                                <option value="Renda Fixa">Renda Fixa (CDB, LCI, LCA)</option>
+                                <option value="Tesouro Direto">Tesouro Direto</option>
+                                <option value="Ações">Ações</option>
+                                <option value="Fundos Imobiliários">Fundos Imobiliários (FIIs)</option>
+                                <option value="Fundos de Investimento">Fundos de Investimento</option>
+                                <option value="Criptomoedas">Criptomoedas</option>
+                                <option value="Outros">Outros</option>
+                            </select>
                         </div>
                     </div>
                     <div class="flex justify-end gap-2 pt-1">
                         <button onclick="excluirAtivoCompleto()" class="bg-red-950/40 text-red-400 border border-red-900 px-3 py-1.5 rounded-lg text-xs hover:bg-red-900/40 transition">Remover Ativo</button>
-                        <button onclick="salvarEdicaoBasica()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-1.5 rounded-lg text-xs transition">Atualizar Ativo</button>
+                        <button onclick="salvarEdicaoBasica()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-1.5 rounded-lg text-xs transition">Salvar Dados</button>
                     </div>
                 </div>
+                <!-- Registrar saldo -->
                 <div class="space-y-3 bg-gray-900/50 p-4 rounded-xl border border-gray-800">
-                    <h4 class="text-xs font-bold uppercase text-emerald-400">Inserir Movimentação Direta</h4>
-                    <div class="grid grid-cols-3 gap-2">
+                    <h4 class="text-xs font-bold uppercase text-blue-300">Registrar Saldo</h4>
+                    <input type="hidden" id="saldo-edit-id">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Data</label>
+                            <input type="date" id="saldo-data" class="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Saldo (R$)</label>
+                            <input type="number" id="saldo-valor" step="0.01" class="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-xs" placeholder="0,00">
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="cancelarEdicaoSaldo()" id="btn-cancelar-saldo" class="hidden flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-1.5 rounded-lg text-xs transition">Cancelar</button>
+                        <button onclick="salvarSaldo()" id="btn-salvar-saldo" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1.5 rounded-lg text-xs transition">Registrar Saldo</button>
+                    </div>
+                </div>
+                <!-- Lançar movimentação -->
+                <div class="space-y-3 bg-gray-900/50 p-4 rounded-xl border border-gray-800">
+                    <h4 class="text-xs font-bold uppercase text-emerald-400">Lançar Movimentação</h4>
+                    <input type="hidden" id="mov-edit-id">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Data</label>
+                            <input type="date" id="mov-data" class="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-xs">
+                        </div>
                         <div>
                             <label class="block text-xs text-gray-400 mb-1">Tipo</label>
                             <select id="mov-tipo" class="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-xs">
@@ -299,25 +322,37 @@
                                 <option value="Retirada">Retirada (-)</option>
                             </select>
                         </div>
-                        <div class="col-span-2">
-                            <label class="block text-xs text-gray-400 mb-1">Valor da Operação (R$)</label>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Valor (R$)</label>
                             <input type="number" id="mov-valor" step="0.01" class="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-xs" placeholder="0,00">
                         </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Descrição (opcional)</label>
+                            <input type="text" id="mov-descricao" class="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-xs" placeholder="Ex: CDB vencimento">
+                        </div>
                     </div>
-                    <button onclick="adicionarMovimentacaoDireta()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-1.5 rounded-lg text-xs transition">Lançar no Histórico</button>
+                    <div class="flex gap-2">
+                        <button onclick="cancelarEdicaoMov()" id="btn-cancelar-mov" class="hidden flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-1.5 rounded-lg text-xs transition">Cancelar</button>
+                        <button onclick="salvarMovimentacao()" id="btn-salvar-mov" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-1.5 rounded-lg text-xs transition">Lançar no Histórico</button>
+                    </div>
                 </div>
+                <!-- Histórico unificado -->
                 <div class="space-y-2">
-                    <h4 class="text-xs font-bold uppercase text-gray-400 tracking-wider">Histórico de Fluxo de Caixa</h4>
+                    <h4 class="text-xs font-bold uppercase text-gray-400 tracking-wider">Histórico</h4>
                     <div class="border border-gray-800 rounded-lg overflow-hidden bg-gray-950">
                         <table class="w-full text-left text-xs">
                             <thead>
                                 <tr class="bg-gray-900 text-gray-400 border-b border-gray-800">
-                                    <th class="p-2.5">Data/Registro</th>
-                                    <th class="p-2.5">Operação</th>
+                                    <th class="p-2.5">Data</th>
+                                    <th class="p-2.5">Tipo</th>
                                     <th class="p-2.5 text-right">Valor</th>
+                                    <th class="p-2.5">Descrição</th>
+                                    <th class="p-2.5 text-center">Ações</th>
                                 </tr>
                             </thead>
-                            <tbody id="table-historico-movs" class="divide-y divide-gray-900"></tbody>
+                            <tbody id="table-historico-unificado" class="divide-y divide-gray-900"></tbody>
                         </table>
                     </div>
                 </div>
@@ -402,28 +437,52 @@
         }
 
         // ── DATA ──────────────────────────────────────────────────────
+        // ── HELPERS DE DATA ───────────────────────────────────────────
+        function hojeISO() { return new Date().toISOString().split('T')[0] }
+        function isoParaBR(iso) {
+            if (!iso) return ''
+            const [y, m, d] = iso.split('-')
+            return `${d}/${m}/${y}`
+        }
+        function dataParaISO(str) {
+            // aceita yyyy-mm-dd ou dd/mm/yyyy
+            if (!str) return hojeISO()
+            if (str.includes('-')) return str
+            const [d, m, y] = str.split('/')
+            return `${y}-${m}-${d}`
+        }
+
         async function carregarDados() {
             setLoading(true)
             try {
-                const [{ data: cfgData }, { data: invData }, { data: movData }] = await Promise.all([
+                const [{ data: cfgData }, { data: invData }, { data: movData }, { data: valData }] = await Promise.all([
                     db.from('config').select('*'),
                     db.from('investimentos').select('*').order('id'),
-                    db.from('movimentacoes').select('*').order('id')
+                    db.from('movimentacoes').select('*').order('id'),
+                    db.from('historico_valores').select('*').order('data')
                 ])
 
                 const metaRow = (cfgData || []).find(c => c.chave === 'meta_patrimonio')
                 AppData.metaPatrimonio = metaRow ? parseFloat(metaRow.valor) : 0
 
-                AppData.investimentos = (invData || []).map(inv => ({
-                    id: inv.id,
-                    banco: inv.banco,
-                    nome: inv.nome,
-                    categoria: inv.categoria,
-                    valorAtual: parseFloat(inv.valor_atual),
-                    historico: (movData || [])
-                        .filter(m => m.investimento_id === inv.id)
-                        .map(m => ({ data: m.data, tipo: m.tipo, valor: parseFloat(m.valor) }))
-                }))
+                AppData.investimentos = (invData || []).map(inv => {
+                    const saldos = (valData || [])
+                        .filter(v => v.investimento_id === inv.id)
+                        .map(v => ({ id: v.id, data: v.data, valor: parseFloat(v.valor) }))
+                        .sort((a, b) => b.data.localeCompare(a.data))
+                    const ultimoSaldo = saldos.length > 0 ? saldos[0].valor : parseFloat(inv.valor_atual)
+                    return {
+                        id: inv.id,
+                        banco: inv.banco,
+                        nome: inv.nome,
+                        categoria: inv.categoria,
+                        valorAtual: ultimoSaldo,
+                        saldos,
+                        historico: (movData || [])
+                            .filter(m => m.investimento_id === inv.id)
+                            .map(m => ({ id: m.id, data: m.data, tipo: m.tipo, valor: parseFloat(m.valor), descricao: m.descricao || '' }))
+                    }
+                })
 
                 document.getElementById('input-meta-patrimonio').value = AppData.metaPatrimonio || ''
                 renderApp()
@@ -536,34 +595,20 @@
         function openModalCadastro() { document.getElementById('modal-cadastro').classList.remove('hidden') }
         function closeModalCadastro() { document.getElementById('modal-cadastro').classList.add('hidden') }
 
-        async function criarOuAportarAtivo(e) {
+        async function cadastrarInvestimento(e) {
             e.preventDefault()
             setLoading(true)
             try {
                 const banco = document.getElementById('cad-banco').value.trim()
                 const nome = document.getElementById('cad-nome').value.trim()
                 const categoria = document.getElementById('cad-categoria').value
-                const valAplicado = parseFloat(document.getElementById('cad-val-aplicado').value) || 0
-                const valAtual = parseFloat(document.getElementById('cad-val-atual').value) || valAplicado
-
-                const existente = AppData.investimentos.find(inv =>
-                    inv.banco.toLowerCase() === banco.toLowerCase() &&
-                    inv.nome.toLowerCase() === nome.toLowerCase())
-
-                if (existente) {
-                    await db.from('movimentacoes').insert({ investimento_id: existente.id, data: new Date().toLocaleDateString('pt-BR'), tipo: 'Aporte', valor: valAplicado })
-                    await db.from('investimentos').update({ valor_atual: valAtual }).eq('id', existente.id)
-                } else {
-                    const newId = Date.now()
-                    await db.from('investimentos').insert({ id: newId, user_id: currentUser.id, banco, nome, categoria, valor_atual: valAtual })
-                    await db.from('movimentacoes').insert({ investimento_id: newId, data: new Date().toLocaleDateString('pt-BR'), tipo: 'Aporte', valor: valAplicado })
-                }
-
+                const newId = Date.now()
+                await db.from('investimentos').insert({ id: newId, user_id: currentUser.id, banco, nome, categoria, valor_atual: 0 })
                 closeModalCadastro()
                 e.target.reset()
                 await carregarDados()
             } catch (err) {
-                alert('Erro ao salvar: ' + err.message)
+                alert('Erro ao cadastrar: ' + err.message)
             } finally {
                 setLoading(false)
             }
@@ -574,24 +619,48 @@
             if (!inv) return
             document.getElementById('edit-id').value = inv.id
             document.getElementById('edit-nome').value = inv.nome
-            document.getElementById('edit-valor-atual').value = inv.valorAtual
+            document.getElementById('edit-categoria').value = inv.categoria
             document.getElementById('edit-titulo-modal').innerText = inv.nome
             document.getElementById('edit-subtitulo-modal').innerText = `${inv.categoria} • ${inv.banco}`
-            const tbody = document.getElementById('table-historico-movs')
-            tbody.innerHTML = ''
-            inv.historico.forEach(mov => {
+            // pré-preencher datas com hoje
+            document.getElementById('saldo-data').value = hojeISO()
+            document.getElementById('saldo-valor').value = ''
+            document.getElementById('mov-data').value = hojeISO()
+            document.getElementById('mov-valor').value = ''
+            document.getElementById('mov-descricao').value = ''
+            cancelarEdicaoSaldo()
+            cancelarEdicaoMov()
+            renderHistoricoUnificado(inv)
+            document.getElementById('modal-gerenciar').classList.remove('hidden')
+        }
+
+        function renderHistoricoUnificado(inv) {
+            // Unir saldos e movimentações, ordenar por data desc
+            const itens = []
+            inv.saldos.forEach(s => itens.push({ tipo: 'Saldo', data: s.data, valor: s.valor, descricao: '', id: s.id, fonte: 'saldo' }))
+            inv.historico.forEach(m => itens.push({ tipo: m.tipo, data: dataParaISO(m.data), valor: m.valor, descricao: m.descricao, id: m.id, fonte: 'mov' }))
+            itens.sort((a, b) => b.data.localeCompare(a.data))
+            const tbody = document.getElementById('table-historico-unificado')
+            tbody.innerHTML = itens.length === 0
+                ? '<tr><td colspan="5" class="p-3 text-center text-gray-600 italic">Nenhum registro ainda.</td></tr>' : ''
+            itens.forEach(item => {
+                const corTipo = item.fonte === 'saldo' ? 'text-blue-400' :
+                    item.tipo === 'Aporte' ? 'text-emerald-400' : 'text-red-400'
                 tbody.innerHTML += `<tr>
-                    <td class="p-2.5 text-gray-400">${mov.data}</td>
-                    <td class="p-2.5"><span class="${mov.tipo === 'Aporte' ? 'text-emerald-400' : 'text-red-400'} font-medium">${mov.tipo}</span></td>
-                    <td class="p-2.5 text-right font-mono">${formatBRL(mov.valor)}</td>
+                    <td class="p-2.5 text-gray-400">${isoParaBR(item.data)}</td>
+                    <td class="p-2.5"><span class="${corTipo} font-medium">${item.tipo}</span></td>
+                    <td class="p-2.5 text-right font-mono">${formatBRL(item.valor)}</td>
+                    <td class="p-2.5 text-gray-500 italic text-xs">${item.descricao || '—'}</td>
+                    <td class="p-2.5 text-center whitespace-nowrap">
+                        <button onclick="${item.fonte === 'saldo' ? `prepararEdicaoSaldo(${item.id},${item.valor},'${item.data}')` : `prepararEdicaoMov(${item.id},${item.valor},'${item.data}','${item.tipo}','${item.descricao.replace(/'/g,"\\'")}')` }" class="text-gray-500 hover:text-blue-400 px-1 transition" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
+                        <button onclick="${item.fonte === 'saldo' ? `excluirSaldo(${item.id})` : `excluirMovimentacao(${item.id})`}" class="text-gray-500 hover:text-red-400 px-1 transition" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                    </td>
                 </tr>`
             })
-            document.getElementById('modal-gerenciar').classList.remove('hidden')
         }
 
         function closeModalGerenciar() {
             document.getElementById('modal-gerenciar').classList.add('hidden')
-            document.getElementById('mov-valor').value = ''
         }
 
         async function salvarEdicaoBasica() {
@@ -599,8 +668,8 @@
             try {
                 const id = parseInt(document.getElementById('edit-id').value)
                 const nome = document.getElementById('edit-nome').value.trim()
-                const valorAtual = parseFloat(document.getElementById('edit-valor-atual').value) || 0
-                await db.from('investimentos').update({ nome, valor_atual: valorAtual }).eq('id', id)
+                const categoria = document.getElementById('edit-categoria').value
+                await db.from('investimentos').update({ nome, categoria }).eq('id', id)
                 closeModalGerenciar()
                 await carregarDados()
             } catch (err) {
@@ -610,24 +679,125 @@
             }
         }
 
-        async function adicionarMovimentacaoDireta() {
-            const id = parseInt(document.getElementById('edit-id').value)
-            const valor = parseFloat(document.getElementById('mov-valor').value) || 0
-            const tipo = document.getElementById('mov-tipo').value
-            if (valor <= 0) { alert('Insira um valor válido.'); return }
+        // ── SALDOS ────────────────────────────────────────────────────
+        function prepararEdicaoSaldo(id, valor, data) {
+            document.getElementById('saldo-edit-id').value = id
+            document.getElementById('saldo-data').value = data
+            document.getElementById('saldo-valor').value = valor
+            document.getElementById('btn-salvar-saldo').textContent = 'Atualizar Saldo'
+            document.getElementById('btn-cancelar-saldo').classList.remove('hidden')
+        }
+
+        function cancelarEdicaoSaldo() {
+            document.getElementById('saldo-edit-id').value = ''
+            document.getElementById('saldo-data').value = hojeISO()
+            document.getElementById('saldo-valor').value = ''
+            document.getElementById('btn-salvar-saldo').textContent = 'Registrar Saldo'
+            document.getElementById('btn-cancelar-saldo').classList.add('hidden')
+        }
+
+        async function salvarSaldo() {
+            const invId = parseInt(document.getElementById('edit-id').value)
+            const editId = document.getElementById('saldo-edit-id').value
+            const data = document.getElementById('saldo-data').value || hojeISO()
+            const valor = parseFloat(document.getElementById('saldo-valor').value)
+            if (!valor || valor <= 0) { alert('Informe um valor válido.'); return }
             setLoading(true)
             try {
-                const inv = AppData.investimentos.find(i => i.id === id)
-                await db.from('movimentacoes').insert({ investimento_id: id, data: new Date().toLocaleDateString('pt-BR'), tipo, valor })
-                if (inv) {
-                    const novoValor = tipo === 'Aporte' ? inv.valorAtual + valor : Math.max(0, inv.valorAtual - valor)
-                    await db.from('investimentos').update({ valor_atual: novoValor }).eq('id', id)
+                if (editId) {
+                    await db.from('historico_valores').update({ data, valor }).eq('id', parseInt(editId))
+                } else {
+                    await db.from('historico_valores').insert({ investimento_id: invId, user_id: currentUser.id, data, valor })
+                }
+                // Atualiza valor_atual com o saldo mais recente
+                const { data: todos } = await db.from('historico_valores').select('data,valor').eq('investimento_id', invId).order('data', { ascending: false }).limit(1)
+                if (todos && todos.length > 0) {
+                    await db.from('investimentos').update({ valor_atual: todos[0].valor }).eq('id', invId)
                 }
                 await carregarDados()
-                openModalGerenciar(id)
-                document.getElementById('mov-valor').value = ''
+                openModalGerenciar(invId)
             } catch (err) {
-                alert('Erro ao adicionar movimentação: ' + err.message)
+                alert('Erro ao salvar saldo: ' + err.message)
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        async function excluirSaldo(id) {
+            if (!confirm('Excluir este saldo?')) return
+            const invId = parseInt(document.getElementById('edit-id').value)
+            setLoading(true)
+            try {
+                await db.from('historico_valores').delete().eq('id', id)
+                // Recalcula valor_atual
+                const { data: todos } = await db.from('historico_valores').select('data,valor').eq('investimento_id', invId).order('data', { ascending: false }).limit(1)
+                const novoValor = todos && todos.length > 0 ? todos[0].valor : 0
+                await db.from('investimentos').update({ valor_atual: novoValor }).eq('id', invId)
+                await carregarDados()
+                openModalGerenciar(invId)
+            } catch (err) {
+                alert('Erro ao excluir saldo: ' + err.message)
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        // ── MOVIMENTAÇÕES ─────────────────────────────────────────────
+        function prepararEdicaoMov(id, valor, data, tipo, descricao) {
+            document.getElementById('mov-edit-id').value = id
+            document.getElementById('mov-data').value = data
+            document.getElementById('mov-valor').value = valor
+            document.getElementById('mov-tipo').value = tipo
+            document.getElementById('mov-descricao').value = descricao
+            document.getElementById('btn-salvar-mov').textContent = 'Atualizar Movimentação'
+            document.getElementById('btn-cancelar-mov').classList.remove('hidden')
+        }
+
+        function cancelarEdicaoMov() {
+            document.getElementById('mov-edit-id').value = ''
+            document.getElementById('mov-data').value = hojeISO()
+            document.getElementById('mov-valor').value = ''
+            document.getElementById('mov-descricao').value = ''
+            document.getElementById('btn-salvar-mov').textContent = 'Lançar no Histórico'
+            document.getElementById('btn-cancelar-mov').classList.add('hidden')
+        }
+
+        async function salvarMovimentacao() {
+            const invId = parseInt(document.getElementById('edit-id').value)
+            const editId = document.getElementById('mov-edit-id').value
+            const dataISO = document.getElementById('mov-data').value || hojeISO()
+            const dataBR = isoParaBR(dataISO)
+            const tipo = document.getElementById('mov-tipo').value
+            const valor = parseFloat(document.getElementById('mov-valor').value)
+            const descricao = document.getElementById('mov-descricao').value.trim() || null
+            if (!valor || valor <= 0) { alert('Informe um valor válido.'); return }
+            if (!valor || valor <= 0) { alert('Informe um valor válido.'); return }
+            setLoading(true)
+            try {
+                if (editId) {
+                    await db.from('movimentacoes').update({ data: dataBR, tipo, valor, descricao }).eq('id', parseInt(editId))
+                } else {
+                    await db.from('movimentacoes').insert({ investimento_id: invId, data: dataBR, tipo, valor, descricao })
+                }
+                await carregarDados()
+                openModalGerenciar(invId)
+            } catch (err) {
+                alert('Erro ao salvar movimentação: ' + err.message)
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        async function excluirMovimentacao(id) {
+            if (!confirm('Excluir esta movimentação?')) return
+            const invId = parseInt(document.getElementById('edit-id').value)
+            setLoading(true)
+            try {
+                await db.from('movimentacoes').delete().eq('id', id)
+                await carregarDados()
+                openModalGerenciar(invId)
+            } catch (err) {
+                alert('Erro ao excluir movimentação: ' + err.message)
             } finally {
                 setLoading(false)
             }
@@ -675,28 +845,27 @@
                     { onConflict: 'user_id,chave' }
                 )
                 const demos = [
-                    { banco: 'Tesouro Direto', nome: 'Tesouro IPCA+ 2035', categoria: 'Tesouro Direto', valor_atual: 32500, aporte: 30000, data: '10/01/2025' },
-                    { banco: 'XP Investimentos', nome: 'Trend Bolsa Americana FIM', categoria: 'Fundos de Investimento', valor_atual: 16200, aporte: 15000, data: '12/01/2025' },
+                    { banco: 'Tesouro Direto', nome: 'Tesouro IPCA+ 2035', categoria: 'Tesouro Direto', valor_atual: 52000, aporte: 45000, data: '10/01/2025' },
+                    { banco: 'XP Investimentos', nome: 'Trend Bolsa Americana FIM', categoria: 'Fundos de Investimento', valor_atual: 31000, aporte: 28000, data: '15/02/2025' },
                     { banco: 'Banco Inter', nome: 'Ações PETR4', categoria: 'Ações', valor_atual: 18500, aporte: 15000, data: '15/01/2025' },
-                    { banco: 'NuInvest', nome: 'FII HGLG11', categoria: 'Fundos Imobiliários', valor_atual: 19800, aporte: 20000, data: '20/01/2025' }
+                    { banco: 'NuInvest', nome: 'FII HGLG11', categoria: 'Fundos Imobiliários', valor_atual: 22000, aporte: 20000, data: '20/03/2025' },
+                    { banco: 'Itaú', nome: 'CDB 120% CDI', categoria: 'Renda Fixa', valor_atual: 35000, aporte: 32000, data: '05/04/2025' }
                 ]
                 for (const item of demos) {
-                    const newId = Date.now() + Math.floor(Math.random() * 10000)
+                    const newId = Date.now() + Math.floor(Math.random() * 1000)
                     await db.from('investimentos').insert({ id: newId, user_id: currentUser.id, banco: item.banco, nome: item.nome, categoria: item.categoria, valor_atual: item.valor_atual })
                     await db.from('movimentacoes').insert({ investimento_id: newId, data: item.data, tipo: 'Aporte', valor: item.aporte })
                 }
-                document.getElementById('input-meta-patrimonio').value = 150000
                 await carregarDados()
-                alert('Massa de dados Demo injetada!')
             } catch (err) {
-                alert('Erro: ' + err.message)
+                alert('Erro ao carregar demo: ' + err.message)
             } finally {
                 setLoading(false)
             }
         }
 
-        async function limparSistema() {
-            if (!confirm('Deseja zerar todos os dados salvos?')) return
+        async function limparTodosDados() {
+            if (!confirm('Tem certeza? Isso vai apagar TODOS os seus investimentos e configurações.')) return
             setLoading(true)
             try {
                 await db.from('investimentos').delete().eq('user_id', currentUser.id)
@@ -711,7 +880,6 @@
             }
         }
 
-        // ── EXCEL EXPORT ──────────────────────────────────────────────
         function exportarParaExcel() {
             if (AppData.investimentos.length === 0) { alert('Nenhum dado registrado para exportar.'); return }
             const wb = XLSX.utils.book_new()
