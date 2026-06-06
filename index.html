@@ -255,6 +255,16 @@
                         <input type="number" id="cad-val-atual" step="0.01" required class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white" placeholder="Se novo, igual ao aporte">
                     </div>
                 </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Data do Aporte</label>
+                        <input type="date" id="cad-data" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Descrição (opcional)</label>
+                        <input type="text" id="cad-descricao" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white" placeholder="Ex: aporte inicial, reinvestimento...">
+                    </div>
+                </div>
                 <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded-lg font-bold transition">Confirmar Lançamento</button>
             </form>
         </div>
@@ -272,26 +282,30 @@
             </div>
             <div class="p-6 space-y-6 text-sm max-h-[80vh] overflow-y-auto">
                 <div class="space-y-3 bg-gray-900/50 p-4 rounded-xl border border-gray-800">
-                    <h4 class="text-xs font-bold uppercase text-blue-400">Modificar Dados Atuais</h4>
+                    <h4 class="text-xs font-bold uppercase text-blue-400">Registrar Posição de Mercado</h4>
                     <input type="hidden" id="edit-id">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
                             <label class="block text-xs text-gray-400 mb-1">Nome do Ativo</label>
                             <input type="text" id="edit-nome" class="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-xs">
                         </div>
                         <div>
-                            <label class="block text-xs text-gray-400 mb-1">Preço/Valor de Mercado Atual (R$)</label>
+                            <label class="block text-xs text-gray-400 mb-1">Data da Posição</label>
+                            <input type="date" id="edit-data-valor" class="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Valor de Mercado (R$)</label>
                             <input type="number" id="edit-valor-atual" step="0.01" class="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-xs">
                         </div>
                     </div>
                     <div class="flex justify-end gap-2 pt-1">
                         <button onclick="excluirAtivoCompleto()" class="bg-red-950/40 text-red-400 border border-red-900 px-3 py-1.5 rounded-lg text-xs hover:bg-red-900/40 transition">Remover Ativo</button>
-                        <button onclick="salvarEdicaoBasica()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-1.5 rounded-lg text-xs transition">Atualizar Ativo</button>
+                        <button onclick="salvarEdicaoBasica()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-1.5 rounded-lg text-xs transition">Registrar Posição</button>
                     </div>
                 </div>
                 <div class="space-y-3 bg-gray-900/50 p-4 rounded-xl border border-gray-800">
-                    <h4 class="text-xs font-bold uppercase text-emerald-400">Inserir Movimentação Direta</h4>
-                    <div class="grid grid-cols-3 gap-2">
+                    <h4 class="text-xs font-bold uppercase text-emerald-400">Lançar Movimentação</h4>
+                    <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="block text-xs text-gray-400 mb-1">Tipo</label>
                             <select id="mov-tipo" class="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-xs">
@@ -299,22 +313,45 @@
                                 <option value="Retirada">Retirada (-)</option>
                             </select>
                         </div>
-                        <div class="col-span-2">
-                            <label class="block text-xs text-gray-400 mb-1">Valor da Operação (R$)</label>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Data</label>
+                            <input type="date" id="mov-data" class="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Valor (R$)</label>
                             <input type="number" id="mov-valor" step="0.01" class="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-xs" placeholder="0,00">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Descrição (opcional)</label>
+                            <input type="text" id="mov-descricao" class="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-white text-xs" placeholder="Ex: CDB vencimento, dividendo...">
                         </div>
                     </div>
                     <button onclick="adicionarMovimentacaoDireta()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-1.5 rounded-lg text-xs transition">Lançar no Histórico</button>
                 </div>
                 <div class="space-y-2">
-                    <h4 class="text-xs font-bold uppercase text-gray-400 tracking-wider">Histórico de Fluxo de Caixa</h4>
+                    <h4 class="text-xs font-bold uppercase text-blue-300 tracking-wider">Histórico de Posições (Valor de Mercado)</h4>
                     <div class="border border-gray-800 rounded-lg overflow-hidden bg-gray-950">
                         <table class="w-full text-left text-xs">
                             <thead>
                                 <tr class="bg-gray-900 text-gray-400 border-b border-gray-800">
-                                    <th class="p-2.5">Data/Registro</th>
-                                    <th class="p-2.5">Operação</th>
+                                    <th class="p-2.5">Data</th>
+                                    <th class="p-2.5 text-right">Valor de Mercado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-historico-valores" class="divide-y divide-gray-900"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    <h4 class="text-xs font-bold uppercase text-emerald-300 tracking-wider">Histórico de Movimentações</h4>
+                    <div class="border border-gray-800 rounded-lg overflow-hidden bg-gray-950">
+                        <table class="w-full text-left text-xs">
+                            <thead>
+                                <tr class="bg-gray-900 text-gray-400 border-b border-gray-800">
+                                    <th class="p-2.5">Data</th>
+                                    <th class="p-2.5">Tipo</th>
                                     <th class="p-2.5 text-right">Valor</th>
+                                    <th class="p-2.5">Descrição</th>
                                 </tr>
                             </thead>
                             <tbody id="table-historico-movs" class="divide-y divide-gray-900"></tbody>
@@ -336,6 +373,21 @@
         let AppData = { metaPatrimonio: 0, investimentos: [] }
         let charts = { categoria: null, banco: null }
         let currentUser = null
+
+        // ── HELPERS DE DATA ───────────────────────────────────────────
+        function hojeISO() {
+            return new Date().toISOString().split('T')[0]
+        }
+        function isoParaBR(iso) {
+            if (!iso) return ''
+            const [y, m, d] = iso.split('-')
+            return `${d}/${m}/${y}`
+        }
+        function brParaISO(br) {
+            if (!br) return hojeISO()
+            const [d, m, y] = br.split('/')
+            return `${y}-${m}-${d}`
+        }
 
         // ── LOADING ───────────────────────────────────────────────────
         function setLoading(on) {
@@ -405,10 +457,11 @@
         async function carregarDados() {
             setLoading(true)
             try {
-                const [{ data: cfgData }, { data: invData }, { data: movData }] = await Promise.all([
+                const [{ data: cfgData }, { data: invData }, { data: movData }, { data: valData }] = await Promise.all([
                     db.from('config').select('*'),
                     db.from('investimentos').select('*').order('id'),
-                    db.from('movimentacoes').select('*').order('id')
+                    db.from('movimentacoes').select('*').order('id'),
+                    db.from('historico_valores').select('*').order('data')
                 ])
 
                 const metaRow = (cfgData || []).find(c => c.chave === 'meta_patrimonio')
@@ -422,7 +475,11 @@
                     valorAtual: parseFloat(inv.valor_atual),
                     historico: (movData || [])
                         .filter(m => m.investimento_id === inv.id)
-                        .map(m => ({ data: m.data, tipo: m.tipo, valor: parseFloat(m.valor) }))
+                        .map(m => ({ data: m.data, tipo: m.tipo, valor: parseFloat(m.valor), descricao: m.descricao || '' })),
+                    historicoValores: (valData || [])
+                        .filter(v => v.investimento_id === inv.id)
+                        .map(v => ({ data: v.data, valor: parseFloat(v.valor) }))
+                        .sort((a, b) => b.data.localeCompare(a.data))
                 }))
 
                 document.getElementById('input-meta-patrimonio').value = AppData.metaPatrimonio || ''
@@ -533,7 +590,10 @@
         }
 
         // ── MODAIS ────────────────────────────────────────────────────
-        function openModalCadastro() { document.getElementById('modal-cadastro').classList.remove('hidden') }
+        function openModalCadastro() {
+            document.getElementById('cad-data').value = hojeISO()
+            document.getElementById('modal-cadastro').classList.remove('hidden')
+        }
         function closeModalCadastro() { document.getElementById('modal-cadastro').classList.add('hidden') }
 
         async function criarOuAportarAtivo(e) {
@@ -545,18 +605,23 @@
                 const categoria = document.getElementById('cad-categoria').value
                 const valAplicado = parseFloat(document.getElementById('cad-val-aplicado').value) || 0
                 const valAtual = parseFloat(document.getElementById('cad-val-atual').value) || valAplicado
+                const dataISO = document.getElementById('cad-data').value || hojeISO()
+                const dataBR = isoParaBR(dataISO)
+                const descricao = document.getElementById('cad-descricao').value.trim() || null
 
                 const existente = AppData.investimentos.find(inv =>
                     inv.banco.toLowerCase() === banco.toLowerCase() &&
                     inv.nome.toLowerCase() === nome.toLowerCase())
 
                 if (existente) {
-                    await db.from('movimentacoes').insert({ investimento_id: existente.id, data: new Date().toLocaleDateString('pt-BR'), tipo: 'Aporte', valor: valAplicado })
+                    await db.from('movimentacoes').insert({ investimento_id: existente.id, data: dataBR, tipo: 'Aporte', valor: valAplicado, descricao })
                     await db.from('investimentos').update({ valor_atual: valAtual }).eq('id', existente.id)
+                    await db.from('historico_valores').insert({ investimento_id: existente.id, user_id: currentUser.id, data: dataISO, valor: valAtual })
                 } else {
                     const newId = Date.now()
                     await db.from('investimentos').insert({ id: newId, user_id: currentUser.id, banco, nome, categoria, valor_atual: valAtual })
-                    await db.from('movimentacoes').insert({ investimento_id: newId, data: new Date().toLocaleDateString('pt-BR'), tipo: 'Aporte', valor: valAplicado })
+                    await db.from('movimentacoes').insert({ investimento_id: newId, data: dataBR, tipo: 'Aporte', valor: valAplicado, descricao })
+                    await db.from('historico_valores').insert({ investimento_id: newId, user_id: currentUser.id, data: dataISO, valor: valAtual })
                 }
 
                 closeModalCadastro()
@@ -575,15 +640,32 @@
             document.getElementById('edit-id').value = inv.id
             document.getElementById('edit-nome').value = inv.nome
             document.getElementById('edit-valor-atual').value = inv.valorAtual
+            document.getElementById('edit-data-valor').value = hojeISO()
+            document.getElementById('mov-data').value = hojeISO()
             document.getElementById('edit-titulo-modal').innerText = inv.nome
             document.getElementById('edit-subtitulo-modal').innerText = `${inv.categoria} • ${inv.banco}`
+
+            // Histórico de posições
+            const tbodyVal = document.getElementById('table-historico-valores')
+            tbodyVal.innerHTML = inv.historicoValores.length === 0
+                ? '<tr><td colspan="2" class="p-2.5 text-center text-gray-600 italic">Nenhuma posição registrada.</td></tr>' : ''
+            inv.historicoValores.forEach(v => {
+                tbodyVal.innerHTML += `<tr>
+                    <td class="p-2.5 text-gray-400">${isoParaBR(v.data)}</td>
+                    <td class="p-2.5 text-right font-mono text-blue-400">${formatBRL(v.valor)}</td>
+                </tr>`
+            })
+
+            // Histórico de movimentações
             const tbody = document.getElementById('table-historico-movs')
-            tbody.innerHTML = ''
+            tbody.innerHTML = inv.historico.length === 0
+                ? '<tr><td colspan="4" class="p-2.5 text-center text-gray-600 italic">Nenhuma movimentação registrada.</td></tr>' : ''
             inv.historico.forEach(mov => {
                 tbody.innerHTML += `<tr>
                     <td class="p-2.5 text-gray-400">${mov.data}</td>
                     <td class="p-2.5"><span class="${mov.tipo === 'Aporte' ? 'text-emerald-400' : 'text-red-400'} font-medium">${mov.tipo}</span></td>
                     <td class="p-2.5 text-right font-mono">${formatBRL(mov.valor)}</td>
+                    <td class="p-2.5 text-gray-500 italic">${mov.descricao || '—'}</td>
                 </tr>`
             })
             document.getElementById('modal-gerenciar').classList.remove('hidden')
@@ -592,6 +674,7 @@
         function closeModalGerenciar() {
             document.getElementById('modal-gerenciar').classList.add('hidden')
             document.getElementById('mov-valor').value = ''
+            document.getElementById('mov-descricao').value = ''
         }
 
         async function salvarEdicaoBasica() {
@@ -600,7 +683,9 @@
                 const id = parseInt(document.getElementById('edit-id').value)
                 const nome = document.getElementById('edit-nome').value.trim()
                 const valorAtual = parseFloat(document.getElementById('edit-valor-atual').value) || 0
+                const dataISO = document.getElementById('edit-data-valor').value || hojeISO()
                 await db.from('investimentos').update({ nome, valor_atual: valorAtual }).eq('id', id)
+                await db.from('historico_valores').insert({ investimento_id: id, user_id: currentUser.id, data: dataISO, valor: valorAtual })
                 closeModalGerenciar()
                 await carregarDados()
             } catch (err) {
@@ -614,11 +699,14 @@
             const id = parseInt(document.getElementById('edit-id').value)
             const valor = parseFloat(document.getElementById('mov-valor').value) || 0
             const tipo = document.getElementById('mov-tipo').value
+            const dataISO = document.getElementById('mov-data').value || hojeISO()
+            const dataBR = isoParaBR(dataISO)
+            const descricao = document.getElementById('mov-descricao').value.trim() || null
             if (valor <= 0) { alert('Insira um valor válido.'); return }
             setLoading(true)
             try {
                 const inv = AppData.investimentos.find(i => i.id === id)
-                await db.from('movimentacoes').insert({ investimento_id: id, data: new Date().toLocaleDateString('pt-BR'), tipo, valor })
+                await db.from('movimentacoes').insert({ investimento_id: id, data: dataBR, tipo, valor, descricao })
                 if (inv) {
                     const novoValor = tipo === 'Aporte' ? inv.valorAtual + valor : Math.max(0, inv.valorAtual - valor)
                     await db.from('investimentos').update({ valor_atual: novoValor }).eq('id', id)
@@ -626,115 +714,8 @@
                 await carregarDados()
                 openModalGerenciar(id)
                 document.getElementById('mov-valor').value = ''
+                document.getElementById('mov-descricao').value = ''
             } catch (err) {
                 alert('Erro ao adicionar movimentação: ' + err.message)
             } finally {
-                setLoading(false)
-            }
-        }
-
-        async function excluirAtivoCompleto() {
-            if (!confirm('Tem certeza que deseja deletar permanentemente este ativo e todo o histórico dele?')) return
-            setLoading(true)
-            try {
-                const id = parseInt(document.getElementById('edit-id').value)
-                await db.from('investimentos').delete().eq('id', id)
-                closeModalGerenciar()
-                await carregarDados()
-            } catch (err) {
-                alert('Erro ao excluir: ' + err.message)
-            } finally {
-                setLoading(false)
-            }
-        }
-
-        async function salvarMetaGlobal() {
-            setLoading(true)
-            try {
-                const meta = parseFloat(document.getElementById('input-meta-patrimonio').value) || 0
-                await db.from('config').upsert(
-                    { user_id: currentUser.id, chave: 'meta_patrimonio', valor: String(meta) },
-                    { onConflict: 'user_id,chave' }
-                )
-                AppData.metaPatrimonio = meta
-                alert('Meta atualizada com sucesso!')
-                renderApp()
-            } catch (err) {
-                alert('Erro ao salvar meta: ' + err.message)
-            } finally {
-                setLoading(false)
-            }
-        }
-
-        async function carregarDadosDemo() {
-            setLoading(true)
-            try {
-                await db.from('investimentos').delete().eq('user_id', currentUser.id)
-                await db.from('config').upsert(
-                    { user_id: currentUser.id, chave: 'meta_patrimonio', valor: '150000' },
-                    { onConflict: 'user_id,chave' }
-                )
-                const demos = [
-                    { banco: 'Tesouro Direto', nome: 'Tesouro IPCA+ 2035', categoria: 'Tesouro Direto', valor_atual: 32500, aporte: 30000, data: '10/01/2025' },
-                    { banco: 'XP Investimentos', nome: 'Trend Bolsa Americana FIM', categoria: 'Fundos de Investimento', valor_atual: 16200, aporte: 15000, data: '12/01/2025' },
-                    { banco: 'Banco Inter', nome: 'Ações PETR4', categoria: 'Ações', valor_atual: 18500, aporte: 15000, data: '15/01/2025' },
-                    { banco: 'NuInvest', nome: 'FII HGLG11', categoria: 'Fundos Imobiliários', valor_atual: 19800, aporte: 20000, data: '20/01/2025' }
-                ]
-                for (const item of demos) {
-                    const newId = Date.now() + Math.floor(Math.random() * 10000)
-                    await db.from('investimentos').insert({ id: newId, user_id: currentUser.id, banco: item.banco, nome: item.nome, categoria: item.categoria, valor_atual: item.valor_atual })
-                    await db.from('movimentacoes').insert({ investimento_id: newId, data: item.data, tipo: 'Aporte', valor: item.aporte })
-                }
-                document.getElementById('input-meta-patrimonio').value = 150000
-                await carregarDados()
-                alert('Massa de dados Demo injetada!')
-            } catch (err) {
-                alert('Erro: ' + err.message)
-            } finally {
-                setLoading(false)
-            }
-        }
-
-        async function limparSistema() {
-            if (!confirm('Deseja zerar todos os dados salvos?')) return
-            setLoading(true)
-            try {
-                await db.from('investimentos').delete().eq('user_id', currentUser.id)
-                await db.from('config').delete().eq('user_id', currentUser.id)
-                AppData = { metaPatrimonio: 0, investimentos: [] }
-                document.getElementById('input-meta-patrimonio').value = ''
-                renderApp()
-            } catch (err) {
-                alert('Erro: ' + err.message)
-            } finally {
-                setLoading(false)
-            }
-        }
-
-        // ── EXCEL EXPORT ──────────────────────────────────────────────
-        function exportarParaExcel() {
-            if (AppData.investimentos.length === 0) { alert('Nenhum dado registrado para exportar.'); return }
-            const wb = XLSX.utils.book_new()
-            const carteiraRows = [['Banco / Corretora','Investimento','Categoria','Aportes Líquidos (R$)','Valor Atualizado (R$)','Lucro / Prejuízo (R$)','Rentabilidade (%)']]
-            AppData.investimentos.forEach(inv => {
-                const ap = inv.historico.reduce((a, m) => m.tipo === 'Aporte' ? a + m.valor : a - m.valor, 0)
-                const lc = inv.valorAtual - ap
-                const rt = ap > 0 ? (lc / ap) * 100 : 0
-                carteiraRows.push([inv.banco, inv.nome, inv.categoria, +ap.toFixed(2), +inv.valorAtual.toFixed(2), +lc.toFixed(2), +rt.toFixed(2)])
-            })
-            const wsC = XLSX.utils.aoa_to_sheet(carteiraRows)
-            wsC['!cols'] = [22,30,22,22,22,22,18].map(w => ({ wch: w }))
-            XLSX.utils.book_append_sheet(wb, wsC, 'Carteira')
-            const histRows = [['Data','Banco / Corretora','Investimento','Categoria','Tipo','Valor (R$)']]
-            AppData.investimentos.forEach(inv => inv.historico.forEach(m => histRows.push([m.data, inv.banco, inv.nome, inv.categoria, m.tipo, +m.valor.toFixed(2)])))
-            const wsH = XLSX.utils.aoa_to_sheet(histRows)
-            wsH['!cols'] = [14,22,30,22,12,16].map(w => ({ wch: w }))
-            XLSX.utils.book_append_sheet(wb, wsH, 'Histórico')
-            const hoje = new Date().toLocaleDateString('pt-BR')
-            XLSX.writeFile(wb, `Premium_Invest_${hoje.replace(/\//g,'-')}.xlsx`)
-        }
-
-        window.addEventListener('DOMContentLoaded', inicializar)
-    </script>
-</body>
-</html>
+          
