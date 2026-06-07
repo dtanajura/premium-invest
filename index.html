@@ -84,7 +84,7 @@
         </div>
         <div class="mt-6 pt-4 border-t border-gray-800 space-y-2">
             <p id="usuario-email" class="text-xs text-gray-500 text-center truncate px-2"></p>
-            <p class="text-xs text-gray-600 text-center">v1.1</p>
+            <p class="text-xs text-gray-600 text-center">v1.2</p>
             <button onclick="fazerLogout()" class="w-full flex items-center justify-center gap-2 text-xs text-gray-400 hover:text-red-400 py-2 rounded-lg hover:bg-gray-800 transition">
                 <i class="fa-solid fa-right-from-bracket"></i> Sair
             </button>
@@ -1282,6 +1282,10 @@
                     criados++
                 }
 
+                // Fetch existing saldos to avoid duplicates
+                const { data: saldosExist } = await db.from('historico_valores').select('investimento_id,data')
+                const saldoSet = new Set((saldosExist || []).map(s => `${s.investimento_id}||${s.data}`))
+
                 // Insert saldos
                 for (const row of rowsSal) {
                     const banco = String(row['Banco'] || '').trim()
@@ -1294,14 +1298,20 @@
                     const dataISO = dataParaISO(dataStr)
                     const valor = typeof valorRaw === 'number' ? valorRaw : parseBRL(String(valorRaw))
                     if (isNaN(valor)) { addLog(`⚠️ Saldo ignorado — valor inválido para ${nome}`, 'text-yellow-400'); continue }
+                    if (saldoSet.has(`${invId}||${dataISO}`)) { addLog(`– Saldo ${nome} ${dataStr} já existe, ignorado.`, 'text-gray-500'); ignorados++; continue }
                     const { error } = await db.from('historico_valores').insert({
-                        investimento_id: invId, data: dataISO, valor: valor
+                        investimento_id: invId, user_id: userId, data: dataISO, valor: valor
                     })
                     if (error) { addLog(`❌ Erro ao salvar saldo de ${nome}: ${error.message}`, 'text-red-400'); erros++; continue }
+                    saldoSet.add(`${invId}||${dataISO}`)
                     await db.from('investimentos').update({ valor_atual: valor }).eq('id', invId)
                     addLog(`✔ Saldo salvo: ${nome} — ${dataStr} — R$ ${formatNumInput(valor)}`, 'text-green-400')
                     saldosOk++
                 }
+
+                // Fetch existing movimentacoes to avoid duplicates
+                const { data: movsExist } = await db.from('movimentacoes').select('investimento_id,data,tipo,valor')
+                const movSet = new Set((movsExist || []).map(m => `${m.investimento_id}||${m.data}||${m.tipo}||${m.valor}`))
 
                 // Insert movimentacoes
                 for (const row of rowsMov) {
@@ -1317,10 +1327,12 @@
                     const dataBR = dataStr.includes('-') ? isoParaBR(dataStr) : dataStr
                     const valor = typeof valorRaw === 'number' ? valorRaw : parseBRL(String(valorRaw))
                     if (!tipo || isNaN(valor)) { addLog(`⚠️ Movimentação ignorada — dados inválidos para ${nome}`, 'text-yellow-400'); continue }
+                    if (movSet.has(`${invId}||${dataBR}||${tipo}||${valor}`)) { addLog(`– Movimentação ${nome} ${dataStr} já existe, ignorada.`, 'text-gray-500'); ignorados++; continue }
                     const { error } = await db.from('movimentacoes').insert({
-                        investimento_id: invId, data: dataBR, tipo, valor, descricao
+                        investimento_id: invId, user_id: userId, data: dataBR, tipo, valor, descricao
                     })
                     if (error) { addLog(`❌ Erro ao salvar movimentação de ${nome}: ${error.message}`, 'text-red-400'); erros++; continue }
+                    movSet.add(`${invId}||${dataBR}||${tipo}||${valor}`)
                     movsOk++
                 }
 
