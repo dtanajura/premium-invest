@@ -84,7 +84,7 @@
         </div>
         <div class="mt-6 pt-4 border-t border-gray-800 space-y-2">
             <p id="usuario-email" class="text-xs text-gray-500 text-center truncate px-2"></p>
-            <p class="text-xs text-gray-600 text-center">v1.2</p>
+            <p class="text-xs text-gray-600 text-center">v1.4</p>
             <button onclick="fazerLogout()" class="w-full flex items-center justify-center gap-2 text-xs text-gray-400 hover:text-red-400 py-2 rounded-lg hover:bg-gray-800 transition">
                 <i class="fa-solid fa-right-from-bracket"></i> Sair
             </button>
@@ -598,11 +598,71 @@
         }
 
         // ── RENDER ────────────────────────────────────────────────────
-        function renderApp() {
+        // Calcula XIRR por investimento: saldo mais antigo como saída, movs como saídas/entradas, valorAtual como entrada hoje
+        function calcXIRR(inv) {
+            const cfs = [], dates = []
+            const oldestISO = inv.saldos.length > 0 ? inv.saldos[inv.saldos.length - 1].data : null
+
+            // Saldo mais antigo como investimento inicial (saída negativa)
+            if (oldestISO) {
+                const [y, mo, d] = oldestISO.split('-').map(Number)
+                dates.push(new Date(y, mo - 1, d))
+                cfs.push(-inv.saldos[inv.saldos.length - 1].valor)
+            }
+
+            // Movimentacoes após o saldo mais antigo
+            const base = oldestISO || '0000-00-00'
+            inv.historico.forEach(m => {
+                const mISO = m.data.includes('-') ? m.data : dataParaISO(m.data)
+                if (mISO > base) {
+                    const [y, mo, d] = mISO.split('-').map(Number)
+                    dates.push(new Date(y, mo - 1, d))
+                    cfs.push(m.tipo === 'Aporte' ? -m.valor : m.valor)
+                }
+            })
+
+            // Valor atual como entrada (simula resgate total hoje)
+            const hoje = new Date()
+            // Se última data já é hoje, use amanhã para evitar divisão por zero
+            const ultima = dates.length > 0 ? dates[dates.length - 1] : null
+            const dataFinal = ultima && ultima.toDateString() === hoje.toDateString()
+                ? new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + 1)
+                : hoje
+            dates.push(dataFinal)
+            cfs.push(inv.valorAtual)
+
+            // Ordenar por data
+            const par = dates.map((d, i) => [d, cfs[i]]).sort((a, b) => a[0] - b[0])
+            const ds = par.map(p => p[0])
+            const cs = par.map(p => p[1])
+
+            const temPos = cs.some(c => c > 0)
+            const temNeg = cs.some(c => c < 0)
+            if (!temPos || !temNeg || ds.length < 2) return NaN
+
+            return xirr(cs, ds)
+        }
+
+                // Calcula capital base = saldo mais antigo + aportes líquidos posteriores
+        function calcCapitalBase(inv) {
+            if (inv.saldos.length === 0) {
+                return inv.historico.reduce((a, m) => m.tipo === 'Aporte' ? a + m.valor : a - m.valor, 0)
+            }
+            const oldest = inv.saldos[inv.saldos.length - 1]
+            const oldestISO = oldest.data
+            const netMovsAfter = inv.historico.reduce((a, m) => {
+                const mISO = m.data.includes('-') ? m.data : dataParaISO(m.data)
+                if (mISO > oldestISO) return m.tipo === 'Aporte' ? a + m.valor : a - m.valor
+                return a
+            }, 0)
+            return oldest.valor + netMovsAfter
+        }
+
+                function renderApp() {
             let totalAtual = 0, totalAplicadoLiquido = 0
             let catMap = {}, bancoMap = {}
             AppData.investimentos.forEach(inv => {
-                let soma = inv.historico.reduce((acc, m) => m.tipo === 'Aporte' ? acc + m.valor : acc - m.valor, 0)
+                let soma = calcCapitalBase(inv)
                 totalAtual += inv.valorAtual
                 totalAplicadoLiquido += soma
                 catMap[inv.categoria] = (catMap[inv.categoria] || 0) + inv.valorAtual
@@ -632,16 +692,20 @@
             tbody.innerHTML = AppData.investimentos.length === 0
                 ? '<tr><td colspan="7" class="p-4 text-center text-gray-500 italic">Nenhum ativo registrado.</td></tr>' : ''
             AppData.investimentos.forEach(inv => {
-                let soma = inv.historico.reduce((acc, m) => m.tipo === 'Aporte' ? acc + m.valor : acc - m.valor, 0)
-                let r = soma > 0 ? ((inv.valorAtual - soma) / soma) * 100 : 0
-                const sinal = r >= 0 ? '+' : ''
+                let soma = calcCapitalBase(inv)
+                const tirAnual = calcXIRR(inv)
+                const tirMensal = tirAnualParaMensal(tirAnual)
+                const tirOk = !isNaN(tirAnual) && isFinite(tirAnual)
+                const tirDisplay = tirOk ? `${tirAnual >= 0 ? '+' : ''}${formatPct(tirAnual * 100, 2)}% a.a.` : '—'
+                const tirMensalDisplay = tirOk ? ` / ${tirAnual >= 0 ? '+' : ''}${formatPct(tirMensal * 100, 3)}% a.m.` : ''
+                const tirColor = !tirOk ? 'text-gray-400' : tirAnual >= 0 ? 'text-emerald-500' : 'text-red-400'
                 tbody.innerHTML += `<tr>
                     <td class="p-4 font-semibold">${inv.banco}</td>
                     <td class="p-4 text-blue-400 font-medium">${inv.nome}</td>
                     <td class="p-4"><span class="bg-gray-800 text-gray-300 px-2 py-0.5 rounded text-xs">${inv.categoria}</span></td>
                     <td class="p-4 text-right">${formatBRL(soma)}</td>
                     <td class="p-4 text-right text-emerald-400 font-bold">${formatBRL(inv.valorAtual)}</td>
-                    <td class="p-4 text-right font-medium ${inv.valorAtual >= soma ? 'text-emerald-500' : 'text-red-400'}">${sinal}${formatPct(r)}%</td>
+                    <td class="p-4 text-right font-medium ${tirColor}" title="${tirDisplay}${tirMensalDisplay}">${tirDisplay}</td>
                     <td class="p-4 text-center">
                         <button onclick="openModalGerenciar(${inv.id})" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-xs text-gray-300 px-2.5 py-1 rounded transition"><i class="fa-solid fa-gear mr-1"></i>Gerenciar</button>
                     </td>
@@ -1360,7 +1424,7 @@
             const wb = XLSX.utils.book_new()
             const carteiraRows = [['Banco / Corretora','Investimento','Categoria','Aportes Líquidos (R$)','Valor Atualizado (R$)','Lucro / Prejuízo (R$)','Rentabilidade (%)']]
             AppData.investimentos.forEach(inv => {
-                const ap = inv.historico.reduce((a, m) => m.tipo === 'Aporte' ? a + m.valor : a - m.valor, 0)
+                const ap = calcCapitalBase(inv)
                 const lc = inv.valorAtual - ap
                 const rt = ap > 0 ? (lc / ap) * 100 : 0
                 carteiraRows.push([inv.banco, inv.nome, inv.categoria, +ap.toFixed(2), +inv.valorAtual.toFixed(2), +lc.toFixed(2), +rt.toFixed(2)])
