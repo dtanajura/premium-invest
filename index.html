@@ -84,7 +84,7 @@
         </div>
         <div class="mt-6 pt-4 border-t border-gray-800 space-y-2">
             <p id="usuario-email" class="text-xs text-gray-500 text-center truncate px-2"></p>
-            <p class="text-xs text-gray-600 text-center">v1.4</p>
+            <p class="text-xs text-gray-600 text-center">v1.5</p>
             <button onclick="fazerLogout()" class="w-full flex items-center justify-center gap-2 text-xs text-gray-400 hover:text-red-400 py-2 rounded-lg hover:bg-gray-800 transition">
                 <i class="fa-solid fa-right-from-bracket"></i> Sair
             </button>
@@ -695,17 +695,17 @@
                 let soma = calcCapitalBase(inv)
                 const tirAnual = calcXIRR(inv)
                 const tirMensal = tirAnualParaMensal(tirAnual)
-                const tirOk = !isNaN(tirAnual) && isFinite(tirAnual)
-                const tirDisplay = tirOk ? `${tirAnual >= 0 ? '+' : ''}${formatPct(tirAnual * 100, 2)}% a.a.` : '—'
-                const tirMensalDisplay = tirOk ? ` / ${tirAnual >= 0 ? '+' : ''}${formatPct(tirMensal * 100, 3)}% a.m.` : ''
-                const tirColor = !tirOk ? 'text-gray-400' : tirAnual >= 0 ? 'text-emerald-500' : 'text-red-400'
+                const tirOk = !isNaN(tirMensal) && isFinite(tirMensal)
+                const tirAnualDisplay = tirOk ? `${tirAnual >= 0 ? '+' : ''}${formatPct(tirAnual * 100, 2)}% a.a.` : '—'
+                const tirDisplay = tirOk ? `${tirMensal >= 0 ? '+' : ''}${formatPct(tirMensal * 100, 3)}% a.m.` : '—'
+                const tirColor = !tirOk ? 'text-gray-400' : tirMensal >= 0 ? 'text-emerald-500' : 'text-red-400'
                 tbody.innerHTML += `<tr>
                     <td class="p-4 font-semibold">${inv.banco}</td>
                     <td class="p-4 text-blue-400 font-medium">${inv.nome}</td>
                     <td class="p-4"><span class="bg-gray-800 text-gray-300 px-2 py-0.5 rounded text-xs">${inv.categoria}</span></td>
                     <td class="p-4 text-right">${formatBRL(soma)}</td>
                     <td class="p-4 text-right text-emerald-400 font-bold">${formatBRL(inv.valorAtual)}</td>
-                    <td class="p-4 text-right font-medium ${tirColor}" title="${tirDisplay}${tirMensalDisplay}">${tirDisplay}</td>
+                    <td class="p-4 text-right font-medium ${tirColor}" title="${tirAnualDisplay}">${tirDisplay}</td>
                     <td class="p-4 text-center">
                         <button onclick="openModalGerenciar(${inv.id})" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-xs text-gray-300 px-2.5 py-1 rounded transition"><i class="fa-solid fa-gear mr-1"></i>Gerenciar</button>
                     </td>
