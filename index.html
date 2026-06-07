@@ -84,7 +84,7 @@
         </div>
         <div class="mt-6 pt-4 border-t border-gray-800 space-y-2">
             <p id="usuario-email" class="text-xs text-gray-500 text-center truncate px-2"></p>
-            <p class="text-xs text-gray-600 text-center">v1.5</p>
+            <p class="text-xs text-gray-600 text-center">v1.6</p>
             <button onclick="fazerLogout()" class="w-full flex items-center justify-center gap-2 text-xs text-gray-400 hover:text-red-400 py-2 rounded-lg hover:bg-gray-800 transition">
                 <i class="fa-solid fa-right-from-bracket"></i> Sair
             </button>
@@ -600,38 +600,67 @@
         // ── RENDER ────────────────────────────────────────────────────
         // Calcula XIRR por investimento: saldo mais antigo como saída, movs como saídas/entradas, valorAtual como entrada hoje
         function calcXIRR(inv) {
-            const cfs = [], dates = []
-            const oldestISO = inv.saldos.length > 0 ? inv.saldos[inv.saldos.length - 1].data : null
-
-            // Saldo mais antigo como investimento inicial (saída negativa)
-            if (oldestISO) {
-                const [y, mo, d] = oldestISO.split('-').map(Number)
-                dates.push(new Date(y, mo - 1, d))
-                cfs.push(-inv.saldos[inv.saldos.length - 1].valor)
-            }
-
-            // Movimentacoes após o saldo mais antigo
-            const base = oldestISO || '0000-00-00'
-            inv.historico.forEach(m => {
-                const mISO = m.data.includes('-') ? m.data : dataParaISO(m.data)
-                if (mISO > base) {
-                    const [y, mo, d] = mISO.split('-').map(Number)
-                    dates.push(new Date(y, mo - 1, d))
-                    cfs.push(m.tipo === 'Aporte' ? -m.valor : m.valor)
-                }
+            // Ordena saldos e movimentações cronologicamente
+            const saldosAsc = [...inv.saldos].sort((a, b) => a.data.localeCompare(b.data))
+            const movsAsc   = [...inv.historico].sort((a, b) => {
+                const da = a.data.includes('-') ? a.data : dataParaISO(a.data)
+                const db = b.data.includes('-') ? b.data : dataParaISO(b.data)
+                return da.localeCompare(db)
             })
 
-            // Valor atual como entrada (simula resgate total hoje)
-            const hoje = new Date()
-            // Se última data já é hoje, use amanhã para evitar divisão por zero
-            const ultima = dates.length > 0 ? dates[dates.length - 1] : null
-            const dataFinal = ultima && ultima.toDateString() === hoje.toDateString()
-                ? new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + 1)
-                : hoje
-            dates.push(dataFinal)
-            cfs.push(inv.valorAtual)
+            const cfs = [], dates = []
 
-            // Ordenar por data
+            const firstSaldoISO = saldosAsc.length > 0 ? saldosAsc[0].data : null
+            const firstMovISO   = movsAsc.length > 0
+                ? (movsAsc[0].data.includes('-') ? movsAsc[0].data : dataParaISO(movsAsc[0].data))
+                : null
+
+            // Ponto de partida: saldo mais antigo se não há movimentação anterior
+            // Caso contrário, as movimentações anteriores ao primeiro saldo são as saídas iniciais
+            let startISO = null
+            if (firstSaldoISO && (!firstMovISO || firstSaldoISO <= firstMovISO)) {
+                startISO = firstSaldoISO
+                const [y, mo, d] = firstSaldoISO.split('-').map(Number)
+                dates.push(new Date(y, mo - 1, d))
+                cfs.push(-saldosAsc[0].valor)
+            }
+
+            // Todas as movimentações após o ponto de partida (ou todas se não há saldo inicial)
+            movsAsc.forEach(m => {
+                const mISO = m.data.includes('-') ? m.data : dataParaISO(m.data)
+                if (startISO && mISO <= startISO) return  // pula movs no mesmo dia ou antes do saldo inicial
+                const [y, mo, d] = mISO.split('-').map(Number)
+                dates.push(new Date(y, mo - 1, d))
+                cfs.push(m.tipo === 'Aporte' ? -m.valor : m.valor)
+            })
+
+            // Valor residual estimado = último saldo + aportes - retiradas após o último saldo
+            // (corrige o caso de retirada após o último saldo registrado)
+            const lastSaldoISO   = saldosAsc.length > 0 ? saldosAsc[saldosAsc.length - 1].data : null
+            const lastSaldoValor = saldosAsc.length > 0 ? saldosAsc[saldosAsc.length - 1].valor : inv.valorAtual
+            let residual = lastSaldoValor
+            if (lastSaldoISO) {
+                movsAsc.forEach(m => {
+                    const mISO = m.data.includes('-') ? m.data : dataParaISO(m.data)
+                    if (mISO > lastSaldoISO) {
+                        residual += m.tipo === 'Aporte' ? m.valor : -m.valor
+                    }
+                })
+                residual = Math.max(0, residual)
+            }
+
+            // Adiciona residual como entrada final (hoje) somente se > 0
+            if (residual > 0.01) {
+                const hoje = new Date()
+                const ultima = dates.length > 0 ? dates[dates.length - 1] : null
+                const dataFinal = ultima && ultima.toDateString() === hoje.toDateString()
+                    ? new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + 1)
+                    : hoje
+                dates.push(dataFinal)
+                cfs.push(residual)
+            }
+
+            // Ordena por data e valida
             const par = dates.map((d, i) => [d, cfs[i]]).sort((a, b) => a[0] - b[0])
             const ds = par.map(p => p[0])
             const cs = par.map(p => p[1])
