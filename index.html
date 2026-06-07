@@ -1294,9 +1294,9 @@
                     const dataISO = dataParaISO(dataStr)
                     const valor = typeof valorRaw === 'number' ? valorRaw : parseBRL(String(valorRaw))
                     if (isNaN(valor)) { addLog(`⚠️ Saldo ignorado — valor inválido para ${nome}`, 'text-yellow-400'); continue }
-                    const { error } = await db.from('historico_valores').upsert({
+                    const { error } = await db.from('historico_valores').insert({
                         investimento_id: invId, data: dataISO, valor: valor
-                    }, { onConflict: 'investimento_id,data' })
+                    })
                     if (error) { addLog(`❌ Erro ao salvar saldo de ${nome}: ${error.message}`, 'text-red-400'); erros++; continue }
                     await db.from('investimentos').update({ valor_atual: valor }).eq('id', invId)
                     addLog(`✔ Saldo salvo: ${nome} — ${dataStr} — R$ ${formatNumInput(valor)}`, 'text-green-400')
@@ -1333,7 +1333,7 @@
                 _importBuffer = null
 
                 await carregarDados()
-                renderizarTudo()
+                renderApp()
                 addLog('✔ Dados recarregados.', 'text-green-400')
 
             } catch (ex) {
