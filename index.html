@@ -99,9 +99,18 @@
                 <h1 id="view-title" class="text-2xl font-bold">Dashboard Geral</h1>
                 <p class="text-xs text-gray-400">Consolidado dinâmico e histórico de movimentações</p>
             </div>
-            <button onclick="exportarParaExcel()" class="bg-emerald-700 hover:bg-emerald-600 text-sm font-semibold px-4 py-2 rounded-lg transition flex items-center gap-2">
-                <i class="fa-solid fa-file-excel"></i> Exportar Excel
-            </button>
+            <div class="flex gap-2 flex-wrap">
+                <button onclick="baixarTemplate()" class="bg-gray-700 hover:bg-gray-600 text-sm font-semibold px-4 py-2 rounded-lg transition flex items-center gap-2">
+                    <i class="fa-solid fa-download"></i> Template
+                </button>
+                <label class="bg-blue-600 hover:bg-blue-700 text-sm font-semibold px-4 py-2 rounded-lg transition flex items-center gap-2 cursor-pointer">
+                    <i class="fa-solid fa-file-import"></i> Importar
+                    <input type="file" id="input-import-file" accept=".xlsx" class="hidden" onchange="handleFileImport(event)">
+                </label>
+                <button onclick="exportarParaExcel()" class="bg-emerald-700 hover:bg-emerald-600 text-sm font-semibold px-4 py-2 rounded-lg transition flex items-center gap-2">
+                    <i class="fa-solid fa-file-excel"></i> Exportar
+                </button>
+            </div>
         </div>
 
         <!-- ABA 1: DASHBOARD -->
@@ -1128,6 +1137,204 @@
             }
         }
 
+        // ===== TEMPLATE / IMPORT =====
+        let _importBuffer = null
+
+        function baixarTemplate() {
+            const wb = XLSX.utils.book_new()
+            const wsInv = XLSX.utils.aoa_to_sheet([
+                ['Banco', 'Nome', 'Categoria'],
+                ['Banco Itau', 'CDB 110% CDI', 'Renda Fixa'],
+                ['Clear', 'IVVB11', 'Ações']
+            ])
+            wsInv['!cols'] = [20, 30, 20].map(w => ({ wch: w }))
+            XLSX.utils.book_append_sheet(wb, wsInv, 'Investimentos')
+
+            const wsSal = XLSX.utils.aoa_to_sheet([
+                ['Banco', 'Nome', 'Data (dd/mm/aaaa)', 'Saldo'],
+                ['Banco Itau', 'CDB 110% CDI', '09/01/2026', 15000.00],
+                ['Clear', 'IVVB11', '09/01/2026', 8500.00]
+            ])
+            wsSal['!cols'] = [20, 30, 20, 15].map(w => ({ wch: w }))
+            XLSX.utils.book_append_sheet(wb, wsSal, 'Saldos')
+
+            const wsMov = XLSX.utils.aoa_to_sheet([
+                ['Banco', 'Nome', 'Data (dd/mm/aaaa)', 'Tipo', 'Valor', 'Descricao'],
+                ['Banco Itau', 'CDB 110% CDI', '01/01/2026', 'Aporte', 15000.00, 'Aporte inicial'],
+                ['Clear', 'IVVB11', '01/01/2026', 'Aporte', 8500.00, 'Compra IVVB11']
+            ])
+            wsMov['!cols'] = [20, 30, 20, 12, 15, 30].map(w => ({ wch: w }))
+            XLSX.utils.book_append_sheet(wb, wsMov, 'Movimentacoes')
+
+            XLSX.writeFile(wb, 'template_investimentos.xlsx')
+        }
+
+        function handleFileImport(event) {
+            const file = event.target.files[0]
+            if (!file) return
+            event.target.value = ''
+            const log = document.getElementById('import-log')
+            const summary = document.getElementById('import-summary')
+            const btnConfirm = document.getElementById('btn-confirmar-import')
+            log.innerHTML = ''
+            summary.classList.add('hidden')
+            btnConfirm.classList.add('hidden')
+            _importBuffer = null
+            document.getElementById('modal-import').classList.remove('hidden')
+
+            const addLog = (msg, cls = 'text-gray-300') => {
+                const el = document.createElement('div')
+                el.className = cls
+                el.textContent = msg
+                log.appendChild(el)
+                log.scrollTop = log.scrollHeight
+            }
+
+            addLog(`📂 Lendo arquivo: ${file.name}`)
+            const reader = new FileReader()
+            reader.onload = e => {
+                try {
+                    const wb = XLSX.read(e.target.result, { type: 'array' })
+                    const sheets = wb.SheetNames
+                    addLog(`Planilhas encontradas: ${sheets.join(', ')}`)
+
+                    const getSheet = name => {
+                        const s = wb.Sheets[name]
+                        if (!s) { addLog(`⚠️ Aba "${name}" não encontrada`, 'text-yellow-400'); return [] }
+                        return XLSX.utils.sheet_to_json(s, { defval: '' })
+                    }
+
+                    const rowsInv = getSheet('Investimentos')
+                    const rowsSal = getSheet('Saldos')
+                    const rowsMov = getSheet('Movimentacoes')
+
+                    addLog(`Investimentos: ${rowsInv.length} linha(s)`)
+                    addLog(`Saldos: ${rowsSal.length} linha(s)`)
+                    addLog(`Movimentações: ${rowsMov.length} linha(s)`)
+
+                    if (rowsInv.length === 0 && rowsSal.length === 0 && rowsMov.length === 0) {
+                        addLog('❌ Arquivo vazio ou formato incorreto.', 'text-red-400')
+                        return
+                    }
+
+                    _importBuffer = { rowsInv, rowsSal, rowsMov }
+                    summary.classList.remove('hidden')
+                    summary.innerHTML = `<span class="text-green-400 font-semibold">✔ Arquivo lido com sucesso.</span> Clique em <strong>Confirmar Importação</strong> para carregar os dados no sistema. Itens já existentes (mesmo Banco + Nome) não serão duplicados.`
+                    btnConfirm.classList.remove('hidden')
+                    addLog('✔ Pronto para importar.', 'text-green-400')
+                } catch (err) {
+                    addLog(`❌ Erro ao ler arquivo: ${err.message}`, 'text-red-400')
+                }
+            }
+            reader.readAsArrayBuffer(file)
+        }
+
+        function fecharModalImport() {
+            document.getElementById('modal-import').classList.add('hidden')
+            _importBuffer = null
+        }
+
+        async function confirmarImport() {
+            if (!_importBuffer) return
+            const { rowsInv, rowsSal, rowsMov } = _importBuffer
+            const log = document.getElementById('import-log')
+            const btnConfirm = document.getElementById('btn-confirmar-import')
+            btnConfirm.disabled = true
+            btnConfirm.textContent = 'Importando...'
+
+            const addLog = (msg, cls = 'text-gray-300') => {
+                const el = document.createElement('div')
+                el.className = cls
+                el.textContent = msg
+                log.appendChild(el)
+                log.scrollTop = log.scrollHeight
+            }
+
+            const { data: { user } } = await db.auth.getUser()
+            const userId = user?.id
+            if (!userId) { addLog('❌ Usuário não autenticado.', 'text-red-400'); return }
+
+            // Fetch existing investments to avoid duplicates
+            const { data: existingInvs } = await db.from('investimentos').select('id, banco, nome')
+            const invMap = {}
+            ;(existingInvs || []).forEach(i => { invMap[`${i.banco}||${i.nome}`] = i.id })
+
+            let criados = 0, ignorados = 0, saldosOk = 0, movsOk = 0, erros = 0
+
+            // Insert investments
+            for (const row of rowsInv) {
+                const banco = String(row['Banco'] || '').trim()
+                const nome = String(row['Nome'] || '').trim()
+                const categoria = String(row['Categoria'] || 'Outros').trim()
+                if (!banco || !nome) { ignorados++; continue }
+                const key = `${banco}||${nome}`
+                if (invMap[key]) { addLog(`– ${nome} já existe, ignorado.`, 'text-gray-500'); ignorados++; continue }
+                const { data, error } = await db.from('investimentos').insert({
+                    user_id: userId, banco, nome, categoria, valor_atual: 0
+                }).select('id').single()
+                if (error) { addLog(`❌ Erro ao criar ${nome}: ${error.message}`, 'text-red-400'); erros++; continue }
+                invMap[key] = data.id
+                addLog(`✔ Investimento criado: ${nome}`, 'text-green-400')
+                criados++
+            }
+
+            // Insert saldos
+            for (const row of rowsSal) {
+                const banco = String(row['Banco'] || '').trim()
+                const nome = String(row['Nome'] || '').trim()
+                const dataStr = String(row['Data (dd/mm/aaaa)'] || row['Data'] || '').trim()
+                const valorRaw = row['Saldo']
+                const key = `${banco}||${nome}`
+                const invId = invMap[key]
+                if (!invId) { addLog(`⚠️ Saldo ignorado — investimento não encontrado: ${nome}`, 'text-yellow-400'); continue }
+                const dataISO = dataParaISO(dataStr)
+                const valor = typeof valorRaw === 'number' ? valorRaw : parseBRL(String(valorRaw))
+                if (isNaN(valor)) { addLog(`⚠️ Saldo ignorado — valor inválido para ${nome}`, 'text-yellow-400'); continue }
+                const { error } = await db.from('historico_valores').upsert({
+                    investimento_id: invId, data: dataISO, valor: valor
+                }, { onConflict: 'investimento_id,data' })
+                if (error) { addLog(`❌ Erro ao salvar saldo de ${nome}: ${error.message}`, 'text-red-400'); erros++; continue }
+                // Update valor_atual on the investment
+                await db.from('investimentos').update({ valor_atual: valor }).eq('id', invId)
+                addLog(`✔ Saldo salvo: ${nome} — ${dataStr} — R$ ${formatNumInput(valor)}`, 'text-green-400')
+                saldosOk++
+            }
+
+            // Insert movimentacoes
+            for (const row of rowsMov) {
+                const banco = String(row['Banco'] || '').trim()
+                const nome = String(row['Nome'] || '').trim()
+                const dataStr = String(row['Data (dd/mm/aaaa)'] || row['Data'] || '').trim()
+                const tipo = String(row['Tipo'] || '').trim()
+                const valorRaw = row['Valor']
+                const descricao = String(row['Descricao'] || row['Descrição'] || '').trim()
+                const key = `${banco}||${nome}`
+                const invId = invMap[key]
+                if (!invId) { addLog(`⚠️ Movimentação ignorada — investimento não encontrado: ${nome}`, 'text-yellow-400'); continue }
+                const dataBR = dataStr.includes('-') ? isoParaBR(dataStr) : dataStr
+                const valor = typeof valorRaw === 'number' ? valorRaw : parseBRL(String(valorRaw))
+                if (!tipo || isNaN(valor)) { addLog(`⚠️ Movimentação ignorada — dados inválidos para ${nome}`, 'text-yellow-400'); continue }
+                const { error } = await db.from('movimentacoes').insert({
+                    investimento_id: invId, data: dataBR, tipo, valor, descricao
+                })
+                if (error) { addLog(`❌ Erro ao salvar movimentação de ${nome}: ${error.message}`, 'text-red-400'); erros++; continue }
+                movsOk++
+            }
+
+            addLog(`─────────────────────────────`, 'text-gray-500')
+            addLog(`✅ Importação concluída!`, 'text-green-400')
+            addLog(`   Investimentos criados: ${criados} | ignorados: ${ignorados}`, 'text-gray-300')
+            addLog(`   Saldos importados: ${saldosOk} | Movimentações: ${movsOk} | Erros: ${erros}`, 'text-gray-300')
+
+            btnConfirm.classList.add('hidden')
+            _importBuffer = null
+
+            // Reload data
+            await carregarDados()
+            renderizarTudo()
+            addLog('✔ Dados recarregados.', 'text-green-400')
+        }
+
         function exportarParaExcel() {
             if (AppData.investimentos.length === 0) { alert('Nenhum dado registrado para exportar.'); return }
             const wb = XLSX.utils.book_new()
@@ -1152,5 +1359,21 @@
 
         window.addEventListener('DOMContentLoaded', inicializar)
     </script>
+
+        <!-- MODAL IMPORTAÇÃO -->
+        <div id="modal-import" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden">
+            <div class="bg-gray-800 border border-gray-700 rounded-2xl p-6 w-full max-w-lg mx-4 shadow-2xl">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-bold text-white">Importar Dados</h2>
+                    <button onclick="fecharModalImport()" class="text-gray-400 hover:text-white text-xl">&times;</button>
+                </div>
+                <div id="import-log" class="bg-gray-900 rounded-lg p-3 text-sm font-mono text-gray-300 h-48 overflow-y-auto mb-4 space-y-1"></div>
+                <div id="import-summary" class="hidden text-sm text-gray-300 mb-4"></div>
+                <div class="flex justify-end gap-2">
+                    <button onclick="fecharModalImport()" id="btn-fechar-import" class="bg-gray-600 hover:bg-gray-500 font-semibold px-4 py-2 rounded-lg text-sm">Fechar</button>
+                    <button onclick="confirmarImport()" id="btn-confirmar-import" class="hidden bg-blue-600 hover:bg-blue-700 font-semibold px-4 py-2 rounded-lg text-sm">Confirmar Importação</button>
+                </div>
+            </div>
+        </div>
 </body>
 </html>
