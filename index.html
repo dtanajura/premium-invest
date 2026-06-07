@@ -84,6 +84,7 @@
         </div>
         <div class="mt-6 pt-4 border-t border-gray-800 space-y-2">
             <p id="usuario-email" class="text-xs text-gray-500 text-center truncate px-2"></p>
+            <p class="text-xs text-gray-600 text-center">v1.0</p>
             <button onclick="fazerLogout()" class="w-full flex items-center justify-center gap-2 text-xs text-gray-400 hover:text-red-400 py-2 rounded-lg hover:bg-gray-800 transition">
                 <i class="fa-solid fa-right-from-bracket"></i> Sair
             </button>
@@ -1250,90 +1251,96 @@
                 log.scrollTop = log.scrollHeight
             }
 
-            const { data: { user } } = await db.auth.getUser()
-            const userId = user?.id
-            if (!userId) { addLog('❌ Usuário não autenticado.', 'text-red-400'); return }
+            try {
+                const authResp = await db.auth.getUser()
+                const userId = authResp?.data?.user?.id
+                if (!userId) { addLog('❌ Usuário não autenticado.', 'text-red-400'); btnConfirm.disabled = false; btnConfirm.textContent = 'Confirmar Importação'; return }
 
-            // Fetch existing investments to avoid duplicates
-            const { data: existingInvs } = await db.from('investimentos').select('id, banco, nome')
-            const invMap = {}
-            ;(existingInvs || []).forEach(i => { invMap[`${i.banco}||${i.nome}`] = i.id })
+                // Fetch existing investments to avoid duplicates
+                const { data: existingInvs, error: fetchErr } = await db.from('investimentos').select('id, banco, nome')
+                if (fetchErr) { addLog(`❌ Erro ao buscar investimentos: ${fetchErr.message}`, 'text-red-400'); btnConfirm.disabled = false; btnConfirm.textContent = 'Confirmar Importação'; return }
+                const invMap = {}
+                ;(existingInvs || []).forEach(i => { invMap[`${i.banco}||${i.nome}`] = i.id })
 
-            let criados = 0, ignorados = 0, saldosOk = 0, movsOk = 0, erros = 0
+                let criados = 0, ignorados = 0, saldosOk = 0, movsOk = 0, erros = 0
 
-            // Insert investments
-            for (const row of rowsInv) {
-                const banco = String(row['Banco'] || '').trim()
-                const nome = String(row['Nome'] || '').trim()
-                const categoria = String(row['Categoria'] || 'Outros').trim()
-                if (!banco || !nome) { ignorados++; continue }
-                const key = `${banco}||${nome}`
-                if (invMap[key]) { addLog(`– ${nome} já existe, ignorado.`, 'text-gray-500'); ignorados++; continue }
-                const newId = Date.now() + Math.floor(Math.random() * 1000)
-                const { data, error } = await db.from('investimentos').insert({
-                    id: newId, user_id: userId, banco, nome, categoria, valor_atual: 0
-                }).select('id').single()
-                if (error) { addLog(`❌ Erro ao criar ${nome}: ${error.message}`, 'text-red-400'); erros++; continue }
-                invMap[key] = data.id
-                addLog(`✔ Investimento criado: ${nome}`, 'text-green-400')
-                criados++
+                // Insert investments
+                for (const row of rowsInv) {
+                    const banco = String(row['Banco'] || '').trim()
+                    const nome = String(row['Nome'] || '').trim()
+                    const categoria = String(row['Categoria'] || 'Outros').trim()
+                    if (!banco || !nome) { ignorados++; continue }
+                    const key = `${banco}||${nome}`
+                    if (invMap[key]) { addLog(`– ${nome} já existe, ignorado.`, 'text-gray-500'); ignorados++; continue }
+                    const newId = Date.now() + Math.floor(Math.random() * 1000)
+                    const { data, error } = await db.from('investimentos').insert({
+                        id: newId, user_id: userId, banco, nome, categoria, valor_atual: 0
+                    }).select('id').single()
+                    if (error) { addLog(`❌ Erro ao criar ${nome}: ${error.message}`, 'text-red-400'); erros++; continue }
+                    invMap[key] = data.id
+                    addLog(`✔ Investimento criado: ${nome}`, 'text-green-400')
+                    criados++
+                }
+
+                // Insert saldos
+                for (const row of rowsSal) {
+                    const banco = String(row['Banco'] || '').trim()
+                    const nome = String(row['Nome'] || '').trim()
+                    const dataStr = String(row['Data (dd/mm/aaaa)'] || row['Data'] || '').trim()
+                    const valorRaw = row['Saldo']
+                    const key = `${banco}||${nome}`
+                    const invId = invMap[key]
+                    if (!invId) { addLog(`⚠️ Saldo ignorado — investimento não encontrado: ${nome}`, 'text-yellow-400'); continue }
+                    const dataISO = dataParaISO(dataStr)
+                    const valor = typeof valorRaw === 'number' ? valorRaw : parseBRL(String(valorRaw))
+                    if (isNaN(valor)) { addLog(`⚠️ Saldo ignorado — valor inválido para ${nome}`, 'text-yellow-400'); continue }
+                    const { error } = await db.from('historico_valores').upsert({
+                        investimento_id: invId, data: dataISO, valor: valor
+                    }, { onConflict: 'investimento_id,data' })
+                    if (error) { addLog(`❌ Erro ao salvar saldo de ${nome}: ${error.message}`, 'text-red-400'); erros++; continue }
+                    await db.from('investimentos').update({ valor_atual: valor }).eq('id', invId)
+                    addLog(`✔ Saldo salvo: ${nome} — ${dataStr} — R$ ${formatNumInput(valor)}`, 'text-green-400')
+                    saldosOk++
+                }
+
+                // Insert movimentacoes
+                for (const row of rowsMov) {
+                    const banco = String(row['Banco'] || '').trim()
+                    const nome = String(row['Nome'] || '').trim()
+                    const dataStr = String(row['Data (dd/mm/aaaa)'] || row['Data'] || '').trim()
+                    const tipo = String(row['Tipo'] || '').trim()
+                    const valorRaw = row['Valor']
+                    const descricao = String(row['Descricao'] || row['Descrição'] || '').trim()
+                    const key = `${banco}||${nome}`
+                    const invId = invMap[key]
+                    if (!invId) { addLog(`⚠️ Movimentação ignorada — investimento não encontrado: ${nome}`, 'text-yellow-400'); continue }
+                    const dataBR = dataStr.includes('-') ? isoParaBR(dataStr) : dataStr
+                    const valor = typeof valorRaw === 'number' ? valorRaw : parseBRL(String(valorRaw))
+                    if (!tipo || isNaN(valor)) { addLog(`⚠️ Movimentação ignorada — dados inválidos para ${nome}`, 'text-yellow-400'); continue }
+                    const { error } = await db.from('movimentacoes').insert({
+                        investimento_id: invId, data: dataBR, tipo, valor, descricao
+                    })
+                    if (error) { addLog(`❌ Erro ao salvar movimentação de ${nome}: ${error.message}`, 'text-red-400'); erros++; continue }
+                    movsOk++
+                }
+
+                addLog(`─────────────────────────────`, 'text-gray-500')
+                addLog(`✅ Importação concluída!`, 'text-green-400')
+                addLog(`   Investimentos criados: ${criados} | ignorados: ${ignorados}`, 'text-gray-300')
+                addLog(`   Saldos importados: ${saldosOk} | Movimentações: ${movsOk} | Erros: ${erros}`, 'text-gray-300')
+
+                btnConfirm.classList.add('hidden')
+                _importBuffer = null
+
+                await carregarDados()
+                renderizarTudo()
+                addLog('✔ Dados recarregados.', 'text-green-400')
+
+            } catch (ex) {
+                addLog(`❌ Erro inesperado: ${ex.message}`, 'text-red-400')
+                btnConfirm.disabled = false
+                btnConfirm.textContent = 'Confirmar Importação'
             }
-
-            // Insert saldos
-            for (const row of rowsSal) {
-                const banco = String(row['Banco'] || '').trim()
-                const nome = String(row['Nome'] || '').trim()
-                const dataStr = String(row['Data (dd/mm/aaaa)'] || row['Data'] || '').trim()
-                const valorRaw = row['Saldo']
-                const key = `${banco}||${nome}`
-                const invId = invMap[key]
-                if (!invId) { addLog(`⚠️ Saldo ignorado — investimento não encontrado: ${nome}`, 'text-yellow-400'); continue }
-                const dataISO = dataParaISO(dataStr)
-                const valor = typeof valorRaw === 'number' ? valorRaw : parseBRL(String(valorRaw))
-                if (isNaN(valor)) { addLog(`⚠️ Saldo ignorado — valor inválido para ${nome}`, 'text-yellow-400'); continue }
-                const { error } = await db.from('historico_valores').upsert({
-                    investimento_id: invId, data: dataISO, valor: valor
-                }, { onConflict: 'investimento_id,data' })
-                if (error) { addLog(`❌ Erro ao salvar saldo de ${nome}: ${error.message}`, 'text-red-400'); erros++; continue }
-                // Update valor_atual on the investment
-                await db.from('investimentos').update({ valor_atual: valor }).eq('id', invId)
-                addLog(`✔ Saldo salvo: ${nome} — ${dataStr} — R$ ${formatNumInput(valor)}`, 'text-green-400')
-                saldosOk++
-            }
-
-            // Insert movimentacoes
-            for (const row of rowsMov) {
-                const banco = String(row['Banco'] || '').trim()
-                const nome = String(row['Nome'] || '').trim()
-                const dataStr = String(row['Data (dd/mm/aaaa)'] || row['Data'] || '').trim()
-                const tipo = String(row['Tipo'] || '').trim()
-                const valorRaw = row['Valor']
-                const descricao = String(row['Descricao'] || row['Descrição'] || '').trim()
-                const key = `${banco}||${nome}`
-                const invId = invMap[key]
-                if (!invId) { addLog(`⚠️ Movimentação ignorada — investimento não encontrado: ${nome}`, 'text-yellow-400'); continue }
-                const dataBR = dataStr.includes('-') ? isoParaBR(dataStr) : dataStr
-                const valor = typeof valorRaw === 'number' ? valorRaw : parseBRL(String(valorRaw))
-                if (!tipo || isNaN(valor)) { addLog(`⚠️ Movimentação ignorada — dados inválidos para ${nome}`, 'text-yellow-400'); continue }
-                const { error } = await db.from('movimentacoes').insert({
-                    investimento_id: invId, data: dataBR, tipo, valor, descricao
-                })
-                if (error) { addLog(`❌ Erro ao salvar movimentação de ${nome}: ${error.message}`, 'text-red-400'); erros++; continue }
-                movsOk++
-            }
-
-            addLog(`─────────────────────────────`, 'text-gray-500')
-            addLog(`✅ Importação concluída!`, 'text-green-400')
-            addLog(`   Investimentos criados: ${criados} | ignorados: ${ignorados}`, 'text-gray-300')
-            addLog(`   Saldos importados: ${saldosOk} | Movimentações: ${movsOk} | Erros: ${erros}`, 'text-gray-300')
-
-            btnConfirm.classList.add('hidden')
-            _importBuffer = null
-
-            // Reload data
-            await carregarDados()
-            renderizarTudo()
-            addLog('✔ Dados recarregados.', 'text-green-400')
         }
 
         function exportarParaExcel() {
